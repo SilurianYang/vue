@@ -49,9 +49,11 @@ if (process.env.NODE_ENV !== 'production') {
 
 /**
  * Helper that recursively merges two data objects together.
+ * 这是一个处理data数据的终极合并方法，接收一个子组件对象和父组件对象，最后返回新的子组件数据对象。始终返回子组件数据对象
+ * 递归深度的把父组件data中的数据合并到子组件的data中
  */
 function mergeData (to: Object, from: ?Object): Object {
-  if (!from) return to
+  if (!from) return to      //如果父组件中的data对象为空 则返回子组件中的数据对象，不做合并
   let key, toVal, fromVal
 
   const keys = hasSymbol
@@ -64,34 +66,37 @@ function mergeData (to: Object, from: ?Object): Object {
     if (key === '__ob__') continue
     toVal = to[key]
     fromVal = from[key]
-    if (!hasOwn(to, key)) {
-      set(to, key, fromVal)
-    } else if (
-      toVal !== fromVal &&
+    if (!hasOwn(to, key)) {   //子组件数据对象中是否包含父组件数据对象中的数据，没有则使用set函数进行设置相应的值
+      set(to, key, fromVal)   //observer.js 下
+    } else if (         
+      toVal !== fromVal &&        
       isPlainObject(toVal) &&
       isPlainObject(fromVal)
-    ) {
+    ) {     //如果包含了，那我们需要验证下这个是否为纯对象，进行一个递归合并
       mergeData(toVal, fromVal)
     }
   }
-  return to
+  return to   //最后返回子数据数据对象
 }
 
 /**
  * Data
+ * 
+ * 验证当前是子组件还是父组件，并返回一个函数数据对象 返回一个函数 函数体内依次返回 mergeData函数处理完后的数据对象
+ *  
  */
 export function mergeDataOrFn (
   parentVal: any,
   childVal: any,
   vm?: Component
 ): ?Function {
-  if (!vm) {
+  if (!vm) {    //在子组件的情况下
     // in a Vue.extend merge, both should be functions
-    if (!childVal) {
-      return parentVal
+    if (!childVal) {    
+      return parentVal  //父组件函数对象
     }
     if (!parentVal) {
-      return childVal
+      return childVal //子组件函数对象
     }
     // when parentVal & childVal are both present,
     // we need to return a function that returns the
@@ -124,6 +129,7 @@ export function mergeDataOrFn (
 /**
  * 在strats 策略对象上添加 data 策略函数，用来合并处理 data 选项
  * 
+ * 一个函数最终执行后都返回的是mergeData()处理过后的子组件数据对象
  */
 strats.data = function (
   parentVal: any,
@@ -139,44 +145,46 @@ strats.data = function (
         vm
       )
 
-      return parentVal    //返回父组件的值
+      return parentVal    //抛出警告并返回父组件的值
     }
-    return mergeDataOrFn(parentVal, childVal)
+    return mergeDataOrFn(parentVal, childVal) //无论如何都调用data合并数据对象
   }
 
-  return mergeDataOrFn(parentVal, childVal, vm)
+  return mergeDataOrFn(parentVal, childVal, vm)   //无非多了一个示例传入，区分父组件而已
 }
 
 /**
  * Hooks and props are merged as arrays.
+ * 这是一个生命钩子的合并对象
+ * 
  */
 function mergeHook (
   parentVal: ?Array<Function>,
   childVal: ?Function | ?Array<Function>
 ): ?Array<Function> {
-  const res = childVal
-    ? parentVal
-      ? parentVal.concat(childVal)
-      : Array.isArray(childVal)
-        ? childVal
-        : [childVal]
-    : parentVal
+  const res = childVal    //是否有 childVal，即判断组件的选项中是否有对应名字的生命周期钩子函数
+    ? parentVal     //如果有 childVal 则判断是否有 parentVal
+      ? parentVal.concat(childVal)    //如果有 parentVal 则使用 concat 方法将二者合并为一个数组
+      : Array.isArray(childVal)   //如果没有 parentVal 则判断 childVal 是不是一个数组
+        ? childVal  //如果 childVal 是一个数组则直接返回
+        : [childVal]  //否则将其作为数组的元素，然后返回数组
+    : parentVal     // 如果没有 childVal 则直接返回 parentVal
   return res
     ? dedupeHooks(res)
     : res
 }
 
-function dedupeHooks (hooks) {
+function dedupeHooks (hooks) {  //删除重复的生命钩子
   const res = []
   for (let i = 0; i < hooks.length; i++) {
     if (res.indexOf(hooks[i]) === -1) {
       res.push(hooks[i])
     }
   }
-  return res
+  return res    //返回一个新的生命钩子数据
 }
 
-LIFECYCLE_HOOKS.forEach(hook => {
+LIFECYCLE_HOOKS.forEach(hook => {   //把所有的生命钩子逐个循环赋值到可合并的策略对象中
   strats[hook] = mergeHook
 })
 
@@ -186,6 +194,9 @@ LIFECYCLE_HOOKS.forEach(hook => {
  * When a vm is present (instance creation), we need to do
  * a three-way merge between constructor options, instance
  * options and parent options.
+ * 
+ * 这是一个合并资源的方法，平时我们写的组件及指令及filter都视为资源合并
+ * 
  */
 function mergeAssets (
   parentVal: ?Object,
@@ -193,16 +204,16 @@ function mergeAssets (
   vm?: Component,
   key: string
 ): Object {
-  const res = Object.create(parentVal || null)
+  const res = Object.create(parentVal || null)    //继承与父options上的资源
   if (childVal) {
     process.env.NODE_ENV !== 'production' && assertObjectType(key, childVal, vm)
-    return extend(res, childVal)
-  } else {
+    return extend(res, childVal)    //合并传入的对象到继承于options上的新对象
+  } else {    //不是一个纯对象则 直接返回自带的数据
     return res
   }
 }
 
-ASSET_TYPES.forEach(function (type) {
+ASSET_TYPES.forEach(function (type) {   //把所有的资源逐个循环赋值到可合并的策略对象中
   strats[type + 's'] = mergeAssets
 })
 
@@ -211,6 +222,10 @@ ASSET_TYPES.forEach(function (type) {
  *
  * Watchers hashes should not overwrite one
  * another, so we merge them as arrays.
+ * 
+ * watch 在父组件中为空时 返回的是一个对象形式的函数
+ * 非空及子组件都有值得情况下 返回一个合并后的数组
+ * 子组件没使用的情况下返回一个空对象
  */
 strats.watch = function (
   parentVal: ?Object,
@@ -218,28 +233,33 @@ strats.watch = function (
   vm?: Component,
   key: string
 ): ?Object {
+  //重置掉原生浏览器上watch
   // work around Firefox's Object.prototype.watch...
-  if (parentVal === nativeWatch) parentVal = undefined
+  if (parentVal === nativeWatch) parentVal = undefined 
   if (childVal === nativeWatch) childVal = undefined
   /* istanbul ignore if */
-  if (!childVal) return Object.create(parentVal || null)
-  if (process.env.NODE_ENV !== 'production') {
+  if (!childVal) return Object.create(parentVal || null)    //在用户没有使用watch的情况下,直接返回一个空的对象
+  if (process.env.NODE_ENV !== 'production') {    //检测watch 是否为一个纯对象
     assertObjectType(key, childVal, vm)
   }
-  if (!parentVal) return childVal
-  const ret = {}
-  extend(ret, parentVal)
-  for (const key in childVal) {
+  if (!parentVal) return childVal //现在是用户使用了watch 再判断原本是否有，没有则直接返回用户的
+  const ret = {}    //两者都有的情况下
+  extend(ret, parentVal)      //先处理原始对象，合并到新的ret对象下
+  for (const key in childVal) { 
+    //由于遍历的是 childVal，所以 key 是子选项的 key，父选项中未必能获取到值，所以 parent 未必有值
     let parent = ret[key]
+    // child 是肯定有值的，因为遍历的就是 childVal 本身
     const child = childVal[key]
+    // 这个 if 分支的作用就是如果 parent 存在，就将其转为数组
     if (parent && !Array.isArray(parent)) {
       parent = [parent]
     }
+     // 最后，如果 parent 存在，此时的 parent 应该已经被转为数组了，所以直接将 child concat 进去
     ret[key] = parent
-      ? parent.concat(child)
-      : Array.isArray(child) ? child : [child]
+      ? parent.concat(child)  
+      : Array.isArray(child) ? child : [child]    // 如果 parent 不存在，直接将 child 转为数组返回
   }
-  return ret
+  return ret    // 最后返回新的 ret 对象
 }
 
 /**
@@ -394,7 +414,13 @@ function normalizeDirectives (options: Object) {
     }
   }
 }
-
+/**
+ * 
+ * @param {*} name 
+ * @param {*} value 
+ * @param {*} vm 
+ *  检测当前是否为一个纯对象，不是存对象则抛出错误
+ */
 function assertObjectType (name: string, value: any, vm: ?Component) {
   if (!isPlainObject(value)) {
     warn(
