@@ -9,11 +9,16 @@ import {
 } from '../util/index'
 import { updateListeners } from '../vdom/helpers/index'
 
+
+/**
+ * 
+ * @param {} vm  先声在实例对象上声明两个属性，并赋予默认值
+ */
 export function initEvents (vm: Component) {
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
-  const listeners = vm.$options._parentListeners
+  const listeners = vm.$options._parentListeners    //是否为子组件
   if (listeners) {
     updateComponentListeners(vm, listeners)
   }

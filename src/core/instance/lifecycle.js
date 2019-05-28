@@ -29,23 +29,30 @@ export function setActiveInstance(vm: Component) {
   }
 }
 
+/**
+ * 初始化生命周期
+ * @param {*} vm  传入一个vue 实例
+ */
 export function initLifecycle (vm: Component) {
   const options = vm.$options
 
-  // locate first non-abstract parent
-  let parent = options.parent
-  if (parent && !options.abstract) {
-    while (parent.$options.abstract && parent.$parent) {
+  // locate first non-abstract parent  (查找第一个非抽象的父组件)
+  let parent = options.parent   // 定义 parent，它引用当前实例的父组件
+  if (parent && !options.abstract) {    // 如果当前实例有父组件，且当前实例不是抽象的
+    while (parent.$options.abstract && parent.$parent) {      // 使用 while 循环查找第一个非抽象的父组件
       parent = parent.$parent
     }
-    parent.$children.push(vm)
+    parent.$children.push(vm)  // 经过上面的 while 循环后，parent 应该是一个非抽象的组件，将它作为当前实例的父级，所以将当前实例 vm 添加到父级的 $children 属性里
   }
 
-  vm.$parent = parent
-  vm.$root = parent ? parent.$root : vm
+  vm.$parent = parent   // 设置当前实例的 $parent 属性，指向父级
+  vm.$root = parent ? parent.$root : vm   // 设置 $root 属性，有父级就是用父级的 $root，否则 $root 指向自身
 
-  vm.$children = []
-  vm.$refs = {}
+
+// 接下来就是在当前实例上声明一些属性
+
+  vm.$children = []   
+  vm.$refs = {} 
 
   vm._watcher = null
   vm._inactive = null
@@ -335,15 +342,15 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
 
 export function callHook (vm: Component, hook: string) {
   // #7573 disable dep collection when invoking lifecycle hooks
-  pushTarget()
-  const handlers = vm.$options[hook]
+  pushTarget()  
+  const handlers = vm.$options[hook]    //获取当前需要执行的生命钩子数组
   const info = `${hook} hook`
-  if (handlers) {
-    for (let i = 0, j = handlers.length; i < j; i++) {
-      invokeWithErrorHandling(handlers[i], vm, null, vm, info)
+  if (handlers) {   //确保开发者在没写此生命函数的时候，不报错
+    for (let i = 0, j = handlers.length; i < j; i++) {    //钩子函数会有很多个，遍历及执行
+      invokeWithErrorHandling(handlers[i], vm, null, vm, info) 
     }
   }
-  if (vm._hasHookEvent) {
+  if (vm._hasHookEvent) {   //在initEvents函数中定义的，是不是钩子函数事件
     vm.$emit('hook:' + hook)
   }
   popTarget()

@@ -43,16 +43,16 @@ export function initMixin (Vue: Class<Component>) {
     }
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
-      initProxy(vm)
+      initProxy(vm)   //代理data数据及键盘白名单数据
     } else {
       vm._renderProxy = vm
     }
     // expose real self
-    vm._self = vm
-    initLifecycle(vm)
-    initEvents(vm)
-    initRender(vm)
-    callHook(vm, 'beforeCreate')
+    vm._self = vm;  //当前实例用一个变量缓存起来
+    initLifecycle(vm)   //初始化生命周期
+    initEvents(vm)  //初始化事件
+    initRender(vm)  //
+    callHook(vm, 'beforeCreate')    //支持此钩子函数
     initInjections(vm) // resolve injections before data/props
     initState(vm)
     initProvide(vm) // resolve provide after data/props

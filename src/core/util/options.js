@@ -264,6 +264,7 @@ strats.watch = function (
 
 /**
  * Other object hashes.
+ * 合并对象写法，返回新的对象 子组件上的相同属性将覆盖父组件上的同名选项字段，最终放回一个新的对象
  */
 strats.props =
 strats.methods =
@@ -274,19 +275,20 @@ strats.computed = function (
   vm?: Component,
   key: string
 ): ?Object {
-  if (childVal && process.env.NODE_ENV !== 'production') {
-    assertObjectType(key, childVal, vm)
+  if (childVal && process.env.NODE_ENV !== 'production') {    //非生产环境监测用户传入的是否为一个纯对象
+    assertObjectType(key, childVal, vm) //仅是抛出异常处理
   }
-  if (!parentVal) return childVal
-  const ret = Object.create(null)
-  extend(ret, parentVal)
-  if (childVal) extend(ret, childVal)
-  return ret
+  if (!parentVal) return childVal //父组件没有不用合并
+  const ret = Object.create(null)   //创建一个正常的空对象
+  extend(ret, parentVal)    //合并父组件上的
+  if (childVal) extend(ret, childVal)   //合并子组件上的
+  return ret    //返回全新的的合并完后的对象
 }
-strats.provide = mergeDataOrFn
+strats.provide = mergeDataOrFn    //合并策略使用与 data 选项相同的 mergeDataOrFn 函数
 
 /**
  * Default strategy.
+ * 只要子选项不是 undefined 就使用子选项，否则使用父选项
  */
 const defaultStrat = function (parentVal: any, childVal: any): any {
   return childVal === undefined

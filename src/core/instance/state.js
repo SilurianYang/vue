@@ -45,18 +45,22 @@ export function proxy (target: Object, sourceKey: string, key: string) {
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
+/**
+ * 
+ * @param {*} vm  初始化状态信息，顺序很重要，决定了在时候可以被调用
+ */
 export function initState (vm: Component) {
-  vm._watchers = []
-  const opts = vm.$options
-  if (opts.props) initProps(vm, opts.props)
-  if (opts.methods) initMethods(vm, opts.methods)
-  if (opts.data) {
+  vm._watchers = []   //声明一个默认值
+  const opts = vm.$options    //引用vm.$options 一个副本
+  if (opts.props) initProps(vm, opts.props)   //是否有props，执行
+  if (opts.methods) initMethods(vm, opts.methods)   //执行用户写的方法
+  if (opts.data) {    //执行用户写的数据
     initData(vm)
-  } else {
+  } else {    //没写则观察一个空对象
     observe(vm._data = {}, true /* asRootData */)
   }
-  if (opts.computed) initComputed(vm, opts.computed)
-  if (opts.watch && opts.watch !== nativeWatch) {
+  if (opts.computed) initComputed(vm, opts.computed)    //执行计算属性
+  if (opts.watch && opts.watch !== nativeWatch) {   //对于 watch 选项仅仅判断 opts.watch 是否存在是不够的，还要判断 opts.watch 是不是原生的 watch 对象
     initWatch(vm, opts.watch)
   }
 }

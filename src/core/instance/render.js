@@ -28,9 +28,16 @@ export function initRender (vm: Component) {
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
+
+  //将createElement fn绑定到此实例
+  //以便我们在其中获得适当的渲染上下文。
+  // args order：tag，data，children，normalizationType，alwaysNormalize
+  //内部版本由从模板编译的渲染函数使用
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
   // normalization is always applied for the public version, used in
   // user-written render functions.
+  //常规应用于公共版本，用于
+  //用户编写的渲染函数。
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
   // $attrs & $listeners are exposed for easier HOC creation.
@@ -38,7 +45,7 @@ export function initRender (vm: Component) {
   const parentData = parentVnode && parentVnode.data
 
   /* istanbul ignore else */
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {    //代理一个setter 在用户改写的时候抛出一个警告
     defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm)
     }, true)
