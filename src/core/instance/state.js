@@ -34,7 +34,13 @@ const sharedPropertyDefinition = {
   get: noop,
   set: noop
 }
-
+/**
+ * 
+ * @param {*} target 
+ * @param {*} sourceKey 
+ * @param {*} key 
+ * 简单的设置代理，可枚举，可设置，可读取
+ */
 export function proxy (target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter () {
     return this[sourceKey][key]
@@ -115,10 +121,10 @@ function initProps (vm: Component, propsOptions: Object) {
 
 function initData (vm: Component) {
   let data = vm.$options.data
-  data = vm._data = typeof data === 'function'
-    ? getData(data, vm)
-    : data || {}
-  if (!isPlainObject(data)) {
+  data = vm._data = typeof data === 'function'      //需要判断当前data是否被修改，因为在initState() 在beforeCreate钩子之后，用户可以在beforeCreate钩子中修改data
+    ? getData(data, vm)     //解析当前方法，获取真正的json数据对象
+    : data || {}      //不是方法直接放回
+  if (!isPlainObject(data)) {   //当前是否为纯对象，不为纯对象直接重新赋值并在非开发环境下抛出错误
     data = {}
     process.env.NODE_ENV !== 'production' && warn(
       'data functions should return an object:\n' +
@@ -126,38 +132,48 @@ function initData (vm: Component) {
       vm
     )
   }
+  //现在已经是一个纯对象了，需要进一步验证data
   // proxy data on instance
-  const keys = Object.keys(data)
-  const props = vm.$options.props
-  const methods = vm.$options.methods
+  const keys = Object.keys(data);     //获取当前对象所有的key值
+  const props = vm.$options.props     //获取props
+  const methods = vm.$options.methods     //获取用户写的methods
   let i = keys.length
   while (i--) {
     const key = keys[i]
-    if (process.env.NODE_ENV !== 'production') {
-      if (methods && hasOwn(methods, key)) {
+    if (process.env.NODE_ENV !== 'production') {    //在开发环境下
+      if (methods && hasOwn(methods, key)) {    //验证methods是否包涵了data相同的key值，否则警告，已经声明过啦
         warn(
           `Method "${key}" has already been defined as a data property.`,
           vm
         )
       }
     }
-    if (props && hasOwn(props, key)) {
+    if (props && hasOwn(props, key)) {   //如果当前props中包涵了data相同的key值，不能再声明啦，需要警告
       process.env.NODE_ENV !== 'production' && warn(
         `The data property "${key}" is already declared as a prop. ` +
         `Use prop default value instead.`,
         vm
       )
-    } else if (!isReserved(key)) {
-      proxy(vm, `_data`, key)
+    } else if (!isReserved(key)) {      //验证当前key是否为_和$开头的声明方式
+      proxy(vm, `_data`, key)       //不是的话 直接代码数据
     }
   }
+  //最终得出结论： props优先级 > data优先级 > methods优先级 
+
+  //  真正的响应式数据开始了
   // observe data
   observe(data, true /* asRootData */)
 }
 
+/**
+ * 
+ * @param {*} data 进过 mergeOptions返回必定是一个方法 
+ * @param {*} vm 当前实例
+ * 最终返回真实的json对象
+ */
 export function getData (data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
-  pushTarget()
+  pushTarget()    //这么做是为了防止使用 props 数据初始化 data 数据时收集冗余的依赖
   try {
     return data.call(vm, vm)
   } catch (e) {
