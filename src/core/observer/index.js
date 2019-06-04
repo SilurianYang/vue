@@ -61,10 +61,10 @@ export class Observer {
     def(value, "__ob__", this); //使用代理设置__ob__为不能枚举
     if (Array.isArray(value)) {
       //数组值
-      if (hasProto) {
-        protoAugment(value, arrayMethods);
+      if (hasProto) {  //判断当前是支持__proto__属性,ie11以下不支持
+        protoAugment(value, arrayMethods);    //支持__proto__ 执行此方法
       } else {
-        copyAugment(value, arrayMethods, arrayKeys);
+        copyAugment(value, arrayMethods, arrayKeys);  //通过代理代理所有方法
       }
       this.observeArray(value);
     } else {
@@ -93,10 +93,11 @@ export class Observer {
    * Observe a list of Array items.
    */
   observeArray(items: Array<any>) {
-    for (let i = 0, l = items.length; i < l; i++) {
+    for (let i = 0, l = items.length; i < l; i++) {  //循环调用 observe 观测数据
       observe(items[i]);
     }
   }
+
 }
 
 // helpers
@@ -107,7 +108,7 @@ export class Observer {
  */
 function protoAugment(target, src: Object) {
   /* eslint-disable no-proto */
-  target.__proto__ = src;
+  target.__proto__ = src;  //把当前对象的构造器对象指向新的拦截对象上
   /* eslint-enable no-proto */
 }
 
@@ -115,8 +116,10 @@ function protoAugment(target, src: Object) {
  * Augment a target Object or Array by defining
  * hidden properties.
  */
+//兼容ie11以下的写法 获取所有数组的方法名，及数组方法，通过循环所有的方法名，代理所有的方法在当前对象下并把值指向所对应的原型方法上 over
+
 /* istanbul ignore next */
-function copyAugment(target: Object, src: Object, keys: Array<string>) {
+function copyAugment(target: Object, src: Object, keys: Array<string>) {    
   for (let i = 0, l = keys.length; i < l; i++) {
     const key = keys[i];
     def(target, key, src[key]);
@@ -165,11 +168,11 @@ export function observe(value: any, asRootData: ?boolean): Observer | void {
  * 将数据对象的数据属性转换为访问器属性
  */
 export function defineReactive(
-  obj: Object,
-  key: string,
-  val: any,
+  obj: Object,  //当前需要代理的对象
+  key: string,  //当前需要代理的对象的key
+  val: any,     //对应代理对象的value
   customSetter?: ?Function,
-  shallow?: boolean
+  shallow?: boolean     //是否需要深度监测数据
 ) {
   const dep = new Dep();    //又是一个存储依赖的存储器
 
@@ -182,46 +185,47 @@ export function defineReactive(
   //缓存当前对象的get,set，确保之前对象的正常读写
   const getter = property && property.get;  
   const setter = property && property.set;
-  if ((!getter || setter) && arguments.length === 2) {
-    val = obj[key];
+  // https://github.com/vuejs/vue/pull/7302
+  if ((!getter || setter) && arguments.length === 2) {  //确保值传了两个值得情况下
+    val = obj[key];   //我们程序自己去取val值
   }
 
   let childOb = !shallow && observe(val);
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
-    get: function reactiveGetter() {
-      const value = getter ? getter.call(obj) : val;
-      if (Dep.target) {
-        dep.depend();
-        if (childOb) {
-          childOb.dep.depend();
-          if (Array.isArray(value)) {
+    get: function reactiveGetter() {      //简单总结一下当前getter拦截器主要做的就是返回值及收集依赖
+      const value = getter ? getter.call(obj) : val;      //如果有原始的getter 我么执行原始getter取值，否则直接使用当前val
+      if (Dep.target) {   //如果当前依赖存在，及当前观察者
+        dep.depend();   //需要把观察者添加进容器中
+        if (childOb) {    //当前子对象是否存在
+          childOb.dep.depend();   //如果存在也需要添加进去依赖
+          if (Array.isArray(value)) {     //判断当前这个值是不是数组，循环递归添加进去依赖
             dependArray(value);
           }
         }
       }
-      return value;
+      return value;     //最终单纯的返回一个需要读取的值
     },
-    set: function reactiveSetter(newVal) {
-      const value = getter ? getter.call(obj) : val;
+    set: function reactiveSetter(newVal) {  
+      const value = getter ? getter.call(obj) : val;    //首先获取当前需要赋值的原始值
       /* eslint-disable no-self-compare */
-      if (newVal === value || (newVal !== newVal && value !== value)) {
-        return;
+      if (newVal === value || (newVal !== newVal && value !== value)) {   //判断当前新值和原始值是否相同的情况下什么不做，直接return (newVal !== newVal && value !== value)主要作用是判断当前值是否为NaN
+        return; //直接返回，啥事都不做
       }
       /* eslint-enable no-self-compare */
-      if (process.env.NODE_ENV !== "production" && customSetter) {
-        customSetter();
+      if (process.env.NODE_ENV !== "production" && customSetter) {    //当前函数在开发环境下，并且自定义方法存在的情况下
+        customSetter();       //则执行自定义方法
       }
       // #7981: for accessor properties without setter
-      if (getter && !setter) return;
-      if (setter) {
-        setter.call(obj, newVal);
+      if (getter && !setter) return;   //如果当前getter有设置，但是setter未设置，则直接返回
+      if (setter) {     //如果当前setter已经设置了，那我们需要用他原本的拦截方法执行，确保值是正常设置的
+        setter.call(obj, newVal); 
       } else {
-        val = newVal;
+        val = newVal;   //没有使用拦截贼直接使用当前赋值即可
       }
-      childOb = !shallow && observe(newVal);
-      dep.notify();
+      childOb = !shallow && observe(newVal);  //为了确保当前设置进来的值是否为数组及对象，那么我们需要重新观测它
+      dep.notify();   //最后执行观察者 over
     }
   });
 }
@@ -305,12 +309,13 @@ export function del(target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ * *触摸数组时收集数组元素的依赖关系，因为我们不能像属性getter一样拦截数组元素访问。
  */
-function dependArray(value: Array<any>) {
+function dependArray(value: Array<any>) {   //递归调用次方法收集所有观察者
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i];
-    e && e.__ob__ && e.__ob__.dep.depend();
-    if (Array.isArray(e)) {
+    e && e.__ob__ && e.__ob__.dep.depend();     //当期是对象或是值得时候手动收集观察者
+    if (Array.isArray(e)) {   //如果当前这个数据还是数组则继续递归
       dependArray(e);
     }
   }
