@@ -238,23 +238,35 @@ export function defineReactive(
 export function set(target: Array<any> | Object, key: any, val: any): any {
   if (
     process.env.NODE_ENV !== "production" &&
-    (isUndef(target) || isPrimitive(target))
+    (isUndef(target) || isPrimitive(target))    //在开发环境下我们需要判断当前传入的数据是否满足我们的规则，是否为undefined||null 并且不是对象类型，则抛出错误
   ) {
     warn(
       `Cannot set reactive property on undefined, null, or primitive value: ${(target: any)}`
     );
   }
-  if (Array.isArray(target) && isValidArrayIndex(key)) {
-    target.length = Math.max(target.length, key);
-    target.splice(key, 1, val);
-    return val;
+  if (Array.isArray(target) && isValidArrayIndex(key)) {    //当前穿入的数据是否为一个数组，并且这个key是一个有效的值
+    target.length = Math.max(target.length, key);   //修改当前数组的长度，预防用户传入的索引不存在
+    target.splice(key, 1, val); //替换当前数组中的指定值
+    return val;     //返回当前val,结束了数组的操作
   }
-  if (key in target && !(key in Object.prototype)) {
-    target[key] = val;
-    return val;
+  //接下来就是纯对象了
+  // https://github.com/vuejs/vue/issues/6845
+
+  /** 原始代码
+   *  if (hasOwn(target, key)) {
+        target[key] = val
+        return val
+      }
+   */
+  if (key in target && !(key in Object.prototype)) {  //key在target对象上，在或target的原型链上，同时必须不能在Object.prototype
+    target[key] = val;  //直接赋值
+    return val;     //返回即完成
   }
-  const ob = (target: any).__ob__;
-  if (target._isVue || (ob && ob.vmCount)) {
+  /**
+   * 以上完成得情况为数组修改某个值，对象修改某个值，接下来则是添加新的属性及值
+   */
+  const ob = (target: any).__ob__;  //缓存当前对象下的observer
+  if (target._isVue || (ob && ob.vmCount)) {   //简单判断下当前修改的对象是否为根对象，如果为根对象则警告，根对象都会往上加1 vmCount
     process.env.NODE_ENV !== "production" &&
       warn(
         "Avoid adding reactive properties to a Vue instance or its root $data " +
@@ -262,13 +274,13 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
       );
     return val;
   }
-  if (!ob) {
+  if (!ob) {   //如果当前对象不是响应式的那我们不管，直接赋值即可
     target[key] = val;
     return val;
   }
-  defineReactive(ob.value, key, val);
-  ob.dep.notify();
-  return val;
+  defineReactive(ob.value, key, val);   //调用当前defineReactive，挂载为响应式数据
+  ob.dep.notify();  //并广播观察者
+  return val; //返回当前值 over
 }
 
 /**
@@ -277,18 +289,18 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
 export function del(target: Array<any> | Object, key: any) {
   if (
     process.env.NODE_ENV !== "production" &&
-    (isUndef(target) || isPrimitive(target))
+    (isUndef(target) || isPrimitive(target))  //在开发环境下我们需要判断当前传入的数据是否满足我们的规则，是否为undefined||null 并且不是对象类型，则抛出错误
   ) {
     warn(
       `Cannot delete reactive property on undefined, null, or primitive value: ${(target: any)}`
     );
   }
-  if (Array.isArray(target) && isValidArrayIndex(key)) {
-    target.splice(key, 1);
+  if (Array.isArray(target) && isValidArrayIndex(key)) {      //当前穿入的数据是否为一个数组，并且这个key是一个有效的值
+    target.splice(key, 1);       //删除指定值，自动广播观察者
     return;
   }
-  const ob = (target: any).__ob__;
-  if (target._isVue || (ob && ob.vmCount)) {
+  const ob = (target: any).__ob__;    //缓存当前对象下的observer
+  if (target._isVue || (ob && ob.vmCount)) {  //简单判断下当前修改的对象是否为根对象，如果为根对象则警告，根对象都会往上加1 vmCount
     process.env.NODE_ENV !== "production" &&
       warn(
         "Avoid deleting properties on a Vue instance or its root $data " +
@@ -296,14 +308,14 @@ export function del(target: Array<any> | Object, key: any) {
       );
     return;
   }
-  if (!hasOwn(target, key)) {
+  if (!hasOwn(target, key)) {   //如果当前删除的key不存在当前对象上则什么也不做
     return;
   }
-  delete target[key];
-  if (!ob) {
+  delete target[key]; //删除指定key
+  if (!ob) {  //不是一个响应式的数据 啥也不做
     return;
   }
-  ob.dep.notify();
+  ob.dep.notify();    //完事后手动广播观察者 over
 }
 
 /**
