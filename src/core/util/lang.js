@@ -29,6 +29,7 @@ export function def (obj: Object, key: string, val: any, enumerable?: boolean) {
 
 /**
  * Parse simple path.
+ * 验证一个合法的表达式，并拆分obj.a 以点分隔的字符串 最终返回一个函数
  */
 const bailRE = new RegExp(`[^${unicodeRegExp.source}.$_\\d]`)
 export function parsePath (path: string): any {

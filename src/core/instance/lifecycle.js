@@ -144,16 +144,22 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
   }
 }
-
+/**
+ * 
+ * @param {*} vm 
+ * @param {*} el 
+ * @param {*} hydrating 
+ * 核心方法，无论是完整版的$mount还是运行时的$mount
+ */
 export function mountComponent (
   vm: Component,
   el: ?Element,
   hydrating?: boolean
 ): Component {
   vm.$el = el
-  if (!vm.$options.render) {
-    vm.$options.render = createEmptyVNode
-    if (process.env.NODE_ENV !== 'production') {
+  if (!vm.$options.render) {    //如果当前用户没有传入我们期望的render 函数 那么 我们需要给出一个警告
+    vm.$options.render = createEmptyVNode   //把当前的render函数设置成空的vnode
+    if (process.env.NODE_ENV !== 'production') {  //在开发环境下抛出一系列的警告
       /* istanbul ignore if */
       if ((vm.$options.template && vm.$options.template.charAt(0) !== '#') ||
         vm.$options.el || el) {
@@ -171,11 +177,14 @@ export function mountComponent (
       }
     }
   }
-  callHook(vm, 'beforeMount')
+  callHook(vm, 'beforeMount')   //开始执行生命周期钩子beforeMount
 
+  /**
+   * 开始正真的渲染
+   */
   let updateComponent
   /* istanbul ignore if */
-  if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+  if (process.env.NODE_ENV !== 'production' && config.performance && mark) {    //在开发环境下做了 一系列的性能标记
     updateComponent = () => {
       const name = vm._name
       const id = vm._uid
@@ -193,7 +202,7 @@ export function mountComponent (
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
-    updateComponent = () => {
+    updateComponent = () => { //这里说明下是在使用vm._render()编译vue.render()函数 返回虚拟dom,再通过 vm._update把虚拟dom映射到正真的dom上
       vm._update(vm._render(), hydrating)
     }
   }
@@ -201,15 +210,22 @@ export function mountComponent (
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
-  new Watcher(vm, updateComponent, noop, {
+  //我们在观察者的构造函数中将其设置为vm._watcher
+  //因为观察者的初始补丁可能会调用$ forceUpdate（例如在孩子内部）
+  // component的挂钩），它依赖于已定义的vm._watcher
+
+  /**
+   * updateComponent 在得到求值的情况下使用观察值监听事件触发，在调用执行期间触发render()，再触发getter最后触发 beforeUpdate生命钩子
+   */
+  new Watcher(vm, updateComponent, noop, {      //当前组件实例vm,执行的表达式updateComponent， 回调函数noop，options {}, 为渲染函数观察者
     before () {
       if (vm._isMounted && !vm._isDestroyed) {
         callHook(vm, 'beforeUpdate')
       }
     }
   }, true /* isRenderWatcher */)
-  hydrating = false
 
+  hydrating = false
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
   if (vm.$vnode == null) {

@@ -43,11 +43,11 @@ export default class Watcher {
   value: any;
 
   constructor (
-    vm: Component,
-    expOrFn: string | Function,
-    cb: Function,
-    options?: ?Object,
-    isRenderWatcher?: boolean
+    vm: Component,    //当前租件实例对象vm
+    expOrFn: string | Function,   //被观察的表达式
+    cb: Function, //被观察的表达式触发时对应的需要触发的回调函数
+    options?: ?Object,    //一些需要传递给当前观察者对象选项对话的options
+    isRenderWatcher?: boolean   //用来标识该观察者实例是否为渲染函数观察者
   ) {
     this.vm = vm
     if (isRenderWatcher) {
@@ -55,28 +55,28 @@ export default class Watcher {
     }
     vm._watchers.push(this)
     // options
-    if (options) {
-      this.deep = !!options.deep
-      this.user = !!options.user
-      this.lazy = !!options.lazy
-      this.sync = !!options.sync
-      this.before = options.before
+    if (options) {    //在开发者传递了options时
+      this.deep = !!options.deep  //否是深度观测
+      this.user = !!options.user  //开发者定义的还是内部定义的
+      this.lazy = !!options.lazy    //是否处于一个懒加载的一个情况
+      this.sync = !!options.sync    //用来告诉观察者当数据变化时是否同步求值并执行回调
+      this.before = options.before    //理解可以为Watcher实例的钩子，当数据变化之后，触发更新之前
     } else {
-      this.deep = this.user = this.lazy = this.sync = false
+      this.deep = this.user = this.lazy = this.sync = false   //没有传递的同时全部设置为false
     }
-    this.cb = cb
-    this.id = ++uid // uid for batching
-    this.active = true
-    this.dirty = this.lazy // for lazy watchers
-    this.deps = []
-    this.newDeps = []
+    this.cb = cb    //赋值一个callback
+    this.id = ++uid // uid for batching   唯一标识符id
+    this.active = true  //当前的watcher 是否处于激活状态
+    this.dirty = this.lazy // for lazy watchers 
+    this.deps = []    //重新计算的盒子装了所有的观察者
+    this.newDeps = []   
     this.depIds = new Set()
     this.newDepIds = new Set()
-    this.expression = process.env.NODE_ENV !== 'production'
+    this.expression = process.env.NODE_ENV !== 'production'           //当前在开发环境下抛出给开发者看的被观察的错误表达式
       ? expOrFn.toString()
       : ''
     // parse expression for getter
-    if (typeof expOrFn === 'function') {
+    if (typeof expOrFn === 'function') {    
       this.getter = expOrFn
     } else {
       this.getter = parsePath(expOrFn)

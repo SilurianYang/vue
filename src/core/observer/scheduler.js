@@ -14,12 +14,12 @@ import {
 
 export const MAX_UPDATE_COUNT = 100
 
-const queue: Array<Watcher> = []
+const queue: Array<Watcher> = []    //存储观察者列队容器
 const activatedChildren: Array<Component> = []
-let has: { [key: number]: ?true } = {}
+let has: { [key: number]: ?true } = {}    //全局id,防止多重复观察者入队列
 let circular: { [key: number]: number } = {}
-let waiting = false
-let flushing = false
+let waiting = false     //一个标识符，是否处于等待状态
+let flushing = false      //当前是否在执行队列中，默认是false
 let index = 0
 
 /**
@@ -160,16 +160,20 @@ function callActivatedHooks (queue) {
  * Push a watcher into the watcher queue.
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
+ *  将观察者推入观察者队列。
+    除非是，否则将跳过具有重复ID的作业
+    刷新队列时按下。
  */
 export function queueWatcher (watcher: Watcher) {
-  const id = watcher.id
-  if (has[id] == null) {
-    has[id] = true
-    if (!flushing) {
+  const id = watcher.id //获取到当前观察者的唯一标识符id
+  if (has[id] == null) {      //获取全局变量中是否存在此id,防止重复id的问题 
+    has[id] = true  //赋值当前id到存档中，并标记为true
+    if (!flushing) {  //当前并没有在执行列队中 watcher才给添加进来
       queue.push(watcher)
-    } else {
+    } else {  //如果已经在执行中那么需要进行判断当前watcher的id来区分是否立马执行
       // if already flushing, splice the watcher based on its id
       // if already past its id, it will be run next immediately.
+      //如果已经刷新，请根据其ID来拼接观察者。如果已经超过了它的id，它将立即运行。
       let i = queue.length - 1
       while (i > index && queue[i].id > watcher.id) {
         i--
@@ -177,14 +181,14 @@ export function queueWatcher (watcher: Watcher) {
       queue.splice(i + 1, 0, watcher)
     }
     // queue the flush
-    if (!waiting) {
-      waiting = true
+    if (!waiting) {  //如果当前必须为false 才给执行
+      waiting = true    //标记当前waiting=true,当前执行队列只能执行一次，完成后才能执行
 
-      if (process.env.NODE_ENV !== 'production' && !config.async) {
-        flushSchedulerQueue()
+      if (process.env.NODE_ENV !== 'production' && !config.async) { //在开发环境下执行 确保是同步的状态下直接执行同步
+        flushSchedulerQueue()   //同步执行 完毕
         return
       }
-      nextTick(flushSchedulerQueue)
+      nextTick(flushSchedulerQueue)   //异步执行
     }
   }
 }
