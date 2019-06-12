@@ -76,10 +76,10 @@ export default class Watcher {
       ? expOrFn.toString()
       : ''
     // parse expression for getter
-    if (typeof expOrFn === 'function') {    
+    if (typeof expOrFn === 'function') {        //如果当前是一个方法的话就等他
       this.getter = expOrFn
     } else {
-      this.getter = parsePath(expOrFn)
+      this.getter = parsePath(expOrFn)    //
       if (!this.getter) {
         this.getter = noop
         process.env.NODE_ENV !== 'production' && warn(
