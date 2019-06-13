@@ -97,13 +97,14 @@ export default class Watcher {
 
   /**
    * Evaluate the getter, and re-collect dependencies.
+   * 评估getter，并重新收集依赖项
    */
   get () {
-    pushTarget(this)
+    pushTarget(this)  //
     let value
     const vm = this.vm
     try {
-      value = this.getter.call(vm, vm)
+      value = this.getter.call(vm, vm)    //求值
     } catch (e) {
       if (this.user) {
         handleError(e, vm, `getter for watcher "${this.expression}"`)
@@ -113,11 +114,15 @@ export default class Watcher {
     } finally {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
-      if (this.deep) {
-        traverse(value)
+      /**
+       * “触摸”每个属性，所以他们都被追踪为
+          深度观察的依赖性
+       */
+      if (this.deep) {    //是否需要深度观测
+        traverse(value)   //深度观测
       }
       popTarget()
-      this.cleanupDeps()
+      this.cleanupDeps()    //清楚deps 及id
     }
     return value
   }
@@ -206,6 +211,8 @@ export default class Watcher {
   /**
    * Evaluate the value of the watcher.
    * This only gets called for lazy watchers.
+   * 评估观察者的价值。
+    只有懒惰的观察者才会这样做。
    */
   evaluate () {
     this.value = this.get()

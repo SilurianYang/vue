@@ -28,10 +28,10 @@ import {
   isReservedAttribute
 } from '../util/index'
 
-const sharedPropertyDefinition = {
-  enumerable: true,
-  configurable: true,
-  get: noop,
+const sharedPropertyDefinition = {  //共享属性定义的配置信息，默认只能使用getter
+  enumerable: true,   //可枚举
+  configurable: true,   //可配置
+  get: noop,   
   set: noop
 }
 /**
@@ -70,32 +70,39 @@ export function initState (vm: Component) {
     initWatch(vm, opts.watch)   //传入当前watch属性，开始初始化他
   }
 }
-
+/**
+ * @param {*} vm    //当前实例
+ * @param {*} propsOptions  //当前已经格式化好后的props，至少包含一个type字段的对象
+ */
 function initProps (vm: Component, propsOptions: Object) {
-  const propsData = vm.$options.propsData || {}
-  const props = vm._props = {}
+  const propsData = vm.$options.propsData || {}     //当前父组件传递过来的props存储的地方，如果他为空则直接复制空对象
+  const props = vm._props = {}    //声明一个常量并在实例上添加一个_props属性
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
-  const keys = vm.$options._propKeys = []
-  const isRoot = !vm.$parent
+  /**
+   * 缓存prop键，以便将来的道具更新可以使用Array进行迭代
+     而不是动态对象键枚举。
+   */
+  const keys = vm.$options._propKeys = []     //声明一个常量并在实例上添加一个_propKeys属性
+  const isRoot = !vm.$parent      //当前是否为根节点对象，当组件处于根节点时时没有$parent属性的
   // root instance props should be converted
-  if (!isRoot) {
+  if (!isRoot) {   //当前非根节点下，我们需要关闭observe响应数据，为什么呢？因为在非根点的情况下传递的数据基本都是响应是数据的，所以没必要再次响应式
     toggleObserving(false)
   }
-  for (const key in propsOptions) {
-    keys.push(key)
+  for (const key in propsOptions) {   //开始便利当前至少包含一个type的对象，key即传递的名称
+    keys.push(key)  //保存当前key值，引用数据类型_propKeys也生效
     const value = validateProp(key, propsOptions, propsData, vm)
     /* istanbul ignore else */
-    if (process.env.NODE_ENV !== 'production') {
-      const hyphenatedKey = hyphenate(key)
-      if (isReservedAttribute(hyphenatedKey) ||
-          config.isReservedAttr(hyphenatedKey)) {
+    if (process.env.NODE_ENV !== 'production') {    //开发环境一顿操作猛如虎
+      const hyphenatedKey = hyphenate(key)    //驼峰转连字符。例如  aaBa=> aa-ba
+      if (isReservedAttribute(hyphenatedKey) ||       //检查给定字符串是否是内置的属性。 'key,ref,slot,slot-scope,is'
+          config.isReservedAttr(hyphenatedKey)) {   //如果是内置的属性则抛出警告
         warn(
           `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
           vm
         )
       }
-      defineReactive(props, key, value, () => {
+      defineReactive(props, key, value, () => {   //开始代理当前props，并穿入了一个自定义的方法，在当前属性对象执行setter时触发(开发环境下)
         if (!isRoot && !isUpdatingChildComponent) {
           warn(
             `Avoid mutating a prop directly since the value will be ` +
@@ -106,17 +113,22 @@ function initProps (vm: Component, propsOptions: Object) {
           )
         }
       })
-    } else {
-      defineReactive(props, key, value)
+    } else {    //生产环境简单除暴
+      defineReactive(props, key, value)   //开始将数据对象的数据属性转换为访问器属性，即像data数据一样操作起来
     }
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.
-    if (!(key in vm)) {
-      proxy(vm, `_props`, key)
+    /**
+     * 静态道具已经代理了组件的原型
+      在Vue.extend（）期间。 我们只需要代理定义的道具
+      在这里实例化。
+     */
+    if (!(key in vm)) {   //如果当前key不存在当前实例当中
+      proxy(vm, `_props`, key)  //将当前key代理到当前实例上
     }
   }
-  toggleObserving(true)
+  toggleObserving(true)   //当前props挂载到响应式系统中，完成后解除shouldObserve开关，恢复正常
 }
 
 function initData (vm: Component) {
@@ -186,25 +198,29 @@ export function getData (data: Function, vm: Component): any {
 
 const computedWatcherOptions = { lazy: true }
 
+/**
+ * 开始初始化计算属性，其实计算属性就是一个惰性的watcher
+ * @param {*} vm  //当前实例对象
+ * @param {*} computed    //当前用户穿过来的computed 计算属性对象
+ */
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
-  const watchers = vm._computedWatchers = Object.create(null)
+  const watchers = vm._computedWatchers = Object.create(null)   //生命名拓展了一个属性并赋值了他一个完全空的对象
   // computed properties are just getters during SSR
-  const isSSR = isServerRendering()
+  const isSSR = isServerRendering()     //判断当前宿主是否在服务端渲染
 
-  for (const key in computed) {
-    const userDef = computed[key]
-    const getter = typeof userDef === 'function' ? userDef : userDef.get
-    if (process.env.NODE_ENV !== 'production' && getter == null) {
+  for (const key in computed) {   //开始解刨computed对象
+    const userDef = computed[key]  //先获取到用户写的方法 
+    const getter = typeof userDef === 'function' ? userDef : userDef.get    //写法有两种第一张默认直接函数形式，第二种为对象形式。直接获取get即可
+    if (process.env.NODE_ENV !== 'production' && getter == null) {    //如果当前这个在开发环境下没有getter那么直接抛出错误
       warn(
         `Getter is missing for computed property "${key}".`,
         vm
       )
     }
-
-    if (!isSSR) {
+    if (!isSSR) {   //如果当前不是服务端渲染
       // create internal watcher for the computed property.
-      watchers[key] = new Watcher(
+      watchers[key] = new Watcher(    //实例化一个watcher并赋值到当前所对应的key值下即vm._computedWatchers也会获取到
         vm,
         getter || noop,
         noop,
@@ -215,64 +231,76 @@ function initComputed (vm: Component, computed: Object) {
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
-    if (!(key in vm)) {
-      defineComputed(vm, key, userDef)
-    } else if (process.env.NODE_ENV !== 'production') {
-      if (key in vm.$data) {
-        warn(`The computed property "${key}" is already defined in data.`, vm)
-      } else if (vm.$options.props && key in vm.$options.props) {
-        warn(`The computed property "${key}" is already defined as a prop.`, vm)
+    /**
+     * 组件定义的计算属性已经在。上定义
+      组件原型。 我们只需要定义定义的计算属性
+      在这里实例化。
+     */
+    if (!(key in vm)) {     //如果当前key不在当前实例下声明了
+      defineComputed(vm, key, userDef)  
+    } else if (process.env.NODE_ENV !== 'production') {   //声明之后的情况下，先判断下当前是否为开发环境
+      if (key in vm.$data) {    //如果当前这个key在$data是存在的那么我们将抛出一个错误
+        warn(`The computed property "${key}" is already defined in data.`, vm)    //$data已经声明了这个key你不能这么做了 
+      } else if (vm.$options.props && key in vm.$options.props) { //同样如此，如果当前props下也声明了此key 那么也会抛出一个错误
+        warn(`The computed property "${key}" is already defined as a prop.`, vm)    //同上
       }
     }
   }
 }
 
 export function defineComputed (
-  target: any,
-  key: string,
-  userDef: Object | Function
+  target: any,    //当前实例对象
+  key: string,  //所对应的key
+  userDef: Object | Function //用户在写当前key下所对应的getter方法
 ) {
-  const shouldCache = !isServerRendering()
-  if (typeof userDef === 'function') {
-    sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key)
-      : createGetterInvoker(userDef)
-    sharedPropertyDefinition.set = noop
-  } else {
-    sharedPropertyDefinition.get = userDef.get
-      ? shouldCache && userDef.cache !== false
-        ? createComputedGetter(key)
-        : createGetterInvoker(userDef.get)
-      : noop
-    sharedPropertyDefinition.set = userDef.set || noop
+  const shouldCache = !isServerRendering(); //和上面的isSSR取值相反，这个是用来判断当前的环境下是否应该缓存，只有在非服务端的情况下才能被缓存
+  if (typeof userDef === 'function') {  //如果当前是函数，说明只定义了一个getter
+    sharedPropertyDefinition.get = shouldCache      //重新共享属性定义的get函数
+      ? createComputedGetter(key)   //非服务端渲染需要缓存调用次方法 重_computedWatchers属性中找key对应的方法
+      : createGetterInvoker(userDef)    //相反
+    sharedPropertyDefinition.set = noop   //因为当前这个是函数模式，则只有getter，setter设置为空，其实我们可以不用设置
+  } else {      //对象的情况下
+    sharedPropertyDefinition.get = userDef.get    //如果当前对象所对应的get存在好说
+      ? shouldCache && userDef.cache !== false  //是否需要开启缓存模式，并且用户手动指定的cache不能为false才能执行
+        ? createComputedGetter(key)   //非服务端渲染需要缓存调用次方法 重_computedWatchers属性中找key对应的方法
+        : createGetterInvoker(userDef.get)    //相反
+      : noop    //空方法撸上去 完事了
+    sharedPropertyDefinition.set = userDef.set || noop    //set异此
   }
   if (process.env.NODE_ENV !== 'production' &&
-      sharedPropertyDefinition.set === noop) {
-    sharedPropertyDefinition.set = function () {
+      sharedPropertyDefinition.set === noop) {    //这个是个友好的提示，当我们在开发环境下如果发现当前这个属性的setter不存在？
+    sharedPropertyDefinition.set = function () {  //呵呵 不存在的 我们给个友好的提示，而不是没有没有提示 干巴巴的无反应
       warn(
         `Computed property "${key}" was assigned to but it has no setter.`,
         this
       )
     }
   }
-  Object.defineProperty(target, key, sharedPropertyDefinition)
+  Object.defineProperty(target, key, sharedPropertyDefinition)  //ok代理这个对象中的此值
 }
 
+/**
+ * 此方法接受一个key值参数 用于缓存当前key所对应的getter方法
+ * @param {*} key 
+ */
 function createComputedGetter (key) {
   return function computedGetter () {
     const watcher = this._computedWatchers && this._computedWatchers[key]
-    if (watcher) {
-      if (watcher.dirty) {
-        watcher.evaluate()
+    if (watcher) {  //如果这个watcher 才做这个一下操作
+      if (watcher.dirty) {  //如果这是一个惰性的观察者
+        watcher.evaluate()  //重新收集依赖
       }
       if (Dep.target) {
-        watcher.depend()
+        watcher.depend()    //收集观察者
       }
-      return watcher.value
+      return watcher.value   //返回当前收集到的所有求值
     }
   }
 }
-
+/**
+ *  啥都不说传入一个方法直接返回当前方法并call执行即可
+ * @param {*} fn 
+ */
 function createGetterInvoker(fn) {
   return function computedGetter () {
     return fn.call(this, this)

@@ -17,28 +17,39 @@ type PropOptions = {
   required: ?boolean,
   validator: ?Function
 };
-
+/**
+ * 验证当前key所对应的类型是否匹配
+ * @param {*} key 
+ * @param {*} propOptions 
+ * @param {*} propsData 
+ * @param {*} vm 
+ */
 export function validateProp (
-  key: string,
-  propOptions: Object,
-  propsData: Object,
-  vm?: Component
+  key: string,    //当前需要验证的key
+  propOptions: Object,    //用户写的prop选项，已经格式化过后的
+  propsData: Object,    //用户真实传递的props
+  vm?: Component    //当前实例
 ): any {
-  const prop = propOptions[key]
-  const absent = !hasOwn(propsData, key)
-  let value = propsData[key]
+  const prop = propOptions[key]     //获取当前key所对应的值现在已经是这样了{type:String}
+  const absent = !hasOwn(propsData, key)    //判断当前dom节点上写的key有没有传递,希望是真
+  let value = propsData[key]  //获取当前dom节点上传递的指定key 可能没穿 那么为undefined
   // boolean casting
-  const booleanIndex = getTypeIndex(Boolean, prop.type)
-  if (booleanIndex > -1) {
-    if (absent && !hasOwn(prop, 'default')) {
-      value = false
-    } else if (value === '' || value === hyphenate(key)) {
+  const booleanIndex = getTypeIndex(Boolean, prop.type)   //传递一个原始的钩子器和一个需要对于的参数 最终返回一个数字 prop.type 包含在或登录 前者返回大于-1 相反
+  if (booleanIndex > -1) {  //ok 类型正确
+    if (absent && !hasOwn(prop, 'default')) {  //如果当前这个key在dom节点上没穿并且所对应的json没有设置default
+      value = false   //那我们简单的设置成false吧 
+    } else if (value === '' || value === hyphenate(key)) {  //如果value传递的是空或登录两者匹配
       // only cast empty string / same name to boolean if
       // boolean has higher priority
-      const stringIndex = getTypeIndex(String, prop.type)
-      if (stringIndex < 0 || booleanIndex < stringIndex) {
+      /**
+       * 只将空字符串/同名转换为boolean if
+         布尔值具有更高的优先级
+       */
+      const stringIndex = getTypeIndex(String, prop.type)   
+      if (stringIndex < 0 || booleanIndex < stringIndex) { 
         value = true
       }
+
     }
   }
   // check default value
@@ -178,6 +189,9 @@ function assertType (value: any, type: Function): {
  * Use function string name to check built-in types,
  * because a simple equality check will fail when running
  * across different vms / iframes.
+ * 使用函数字符串名称来检查内置类型，
+  因为运行时简单的相等检查会失败
+  跨越不同的vms / iframe。
  */
 function getType (fn) {
   const match = fn && fn.toString().match(/^\s*function (\w+)/)
@@ -188,16 +202,23 @@ function isSameType (a, b) {
   return getType(a) === getType(b)
 }
 
+/**
+ *  //两者相同返回大于-1 否则返回-1
+ * @param {*} type   //原生的需要对比的钩子器
+ * @param {*} expectedTypes     //用户写的需要被对比的参数
+ */
 function getTypeIndex (type, expectedTypes): number {
-  if (!Array.isArray(expectedTypes)) {
-    return isSameType(expectedTypes, type) ? 0 : -1
+  if (!Array.isArray(expectedTypes)) {  //如果当前不是数组的话
+    return isSameType(expectedTypes, type) ? 0 : -1  
   }
+
+  // 用户写的可能是这样[Boolean,Number] 那么我们需要每个独立的判断
   for (let i = 0, len = expectedTypes.length; i < len; i++) {
-    if (isSameType(expectedTypes[i], type)) {
+    if (isSameType(expectedTypes[i], type)) {   //如果当前这个满足则返回
       return i
     }
   }
-  return -1
+  return -1   //都不满足则返回-1
 }
 
 function getInvalidTypeMessage (name, value, expectedTypes) {

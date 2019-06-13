@@ -15,7 +15,7 @@ export default class Dep {
   id: number;
   subs: Array<Watcher>;
 
-  constructor () {
+  constructor () {  
     this.id = uid++
     this.subs = []
   }
@@ -37,13 +37,13 @@ export default class Dep {
   notify () {
     // stabilize the subscriber list first
     const subs = this.subs.slice()
-    if (process.env.NODE_ENV !== 'production' && !config.async) {
+    if (process.env.NODE_ENV !== 'production' && !config.async) {   //如果当前执行环境以及被开发者设置为同步执行开发者，那么为了确保观察者顺序执行
       // subs aren't sorted in scheduler if not running async
       // we need to sort them now to make sure they fire in correct
       // order
-      subs.sort((a, b) => a.id - b.id)
+      subs.sort((a, b) => a.id - b.id)    //需要重新排序 最后在推入观察者队列中
     }
-    for (let i = 0, l = subs.length; i < l; i++) {
+    for (let i = 0, l = subs.length; i < l; i++) {  //及开始执行
       subs[i].update()
     }
   }

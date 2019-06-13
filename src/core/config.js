@@ -92,6 +92,8 @@ export default ({
   /**
    * Check if an attribute is reserved so that it cannot be used as a component
    * prop. This is platform-dependent and may be overwritten.
+   * 检查属性是否保留，以便不能用作组件
+    支柱。 这取决于平台，可能会被覆盖。
    */
   isReservedAttr: no,
 
