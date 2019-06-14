@@ -306,32 +306,36 @@ function createGetterInvoker(fn) {
     return fn.call(this, this)
   }
 }
-
+/**
+ * 把当前开发者写的方法统一挂载到当前实例下
+ * @param {*} vm    //当前实例下
+ * @param {*} methods     //当前所有的开发者方法
+ */
 function initMethods (vm: Component, methods: Object) {
-  const props = vm.$options.props
-  for (const key in methods) {
-    if (process.env.NODE_ENV !== 'production') {
-      if (typeof methods[key] !== 'function') {
+  const props = vm.$options.props   //缓存当前props
+  for (const key in methods) {    //直接循环当前json
+    if (process.env.NODE_ENV !== 'production') {    //在开发环境下给出一推的提示
+      if (typeof methods[key] !== 'function') {  //如果当前这个不是一个方法 及抛出错误警告
         warn(
           `Method "${key}" has type "${typeof methods[key]}" in the component definition. ` +
           `Did you reference the function correctly?`,
           vm
         )
       }
-      if (props && hasOwn(props, key)) {
+      if (props && hasOwn(props, key)) {    //如果props已经存在了methods的key 那么我们给出警告
         warn(
           `Method "${key}" has already been defined as a prop.`,
           vm
         )
       }
-      if ((key in vm) && isReserved(key)) {
+      if ((key in vm) && isReserved(key)) {   //如果当前key存在当前实例下 并且 是保留字  那不行 必须娄它 警告
         warn(
           `Method "${key}" conflicts with an existing Vue instance method. ` +
           `Avoid defining component methods that start with _ or $.`
         )
       }
     }
-    vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
+    vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm) //挂载到当前实例下over
   }
 }
 /**
