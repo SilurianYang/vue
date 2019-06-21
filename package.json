@@ -146,5 +146,10 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "dependencies": {
+    "shared": "^0.2.0",
+    "src": "^1.1.2",
+    "web": "0.0.2"
   }
 }

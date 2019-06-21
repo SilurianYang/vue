@@ -14,9 +14,13 @@
     Erik Arvidsson的原始代码（MPL-1.1或Apache-2.0或GPL-2.0或更高版本）
  */
 
-import { makeMap, no } from 'shared/util'
-import { isNonPhrasingTag } from 'web/compiler/util'
-import { unicodeRegExp } from 'core/util/lang'
+// import { makeMap, no } from 'shared/util'
+// import { isNonPhrasingTag } from 'web/compiler/util'
+// import { unicodeRegExp } from 'core/util/lang'
+
+import { makeMap, no } from '../../shared/util'
+import { isNonPhrasingTag } from '../../platforms/web/compiler/util'
+import { unicodeRegExp } from '../../core/util/lang'
 
 // Regular Expressions for parsing tags and attributes
 const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/     //节点属性正则
