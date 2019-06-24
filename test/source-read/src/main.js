@@ -1,5 +1,6 @@
 import { parseHTML } from '../../../src/compiler/parser/html-parser'
 parseHTML(document.querySelector('#app').outerHTML,{
+    shouldKeepComment:true,
     start(...args){
         console.log(args)
     },  
@@ -9,8 +10,8 @@ parseHTML(document.querySelector('#app').outerHTML,{
     // chars(...args){
     //     console.log(args)
     // },
-    // comment(...args){
-    //     console.log(args)
-    // }
+    comment(...args){
+        console.log(args)
+    }
 
 })

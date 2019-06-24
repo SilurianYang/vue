@@ -55,7 +55,12 @@ const encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#39|#10|#9);/g
 const isIgnoreNewlineTag = makeMap('pre,textarea', true)    //继续标记指定标签
 const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n'  //匹配当前标签下开头是否为换行符的
 
-function decodeAttr (value, shouldDecodeNewlines) {  //这是一个解析节点的函数
+/**
+ * 这是一个解析节点的函数 把当前字符串解析成对应编码后的字符串
+ * @param {*} value 
+ * @param {*} shouldDecodeNewlines 
+ */
+function decodeAttr (value, shouldDecodeNewlines) {  
   const re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr
   return value.replace(re, match => decodingMap[match])
 }
@@ -65,67 +70,68 @@ function decodeAttr (value, shouldDecodeNewlines) {  //这是一个解析节点�
  * @param {*} options   //一个需要的配置信息
  */
 export function parseHTML (html, options) {
+  debugger
   // 一开始定义一坨常量
-  const stack = []    //如果每次循环遇到一个 非一元标签都没往这里面加
-  const expectHTML = options.expectHTML
-  const isUnaryTag = options.isUnaryTag || no
-  const canBeLeftOpenTag = options.canBeLeftOpenTag || no
-  let index = 0
-  let last, lastTag
+  const stack = []    //如果每次循环遇到一个 非一元标签都会往这里面加
+  const expectHTML = options.expectHTML   //
+  const isUnaryTag = options.isUnaryTag || no   //用于检查当前是狗为一元标签的，默认值为false
+  const canBeLeftOpenTag = options.canBeLeftOpenTag || no   //用来检测一个标签是否是可以省略闭合标签的非一元标签
+  let index = 0   //当前字符串所在下标
+  let last, lastTag   //最后的html及stack中最顶端的标签名称
   //开始进行循环分析字符串 直到被分析解析完成
   while (html) {
     last = html
     // Make sure we're not in a plaintext content element like script/style
-    if (!lastTag || !isPlainTextElement(lastTag)) {
-      let textEnd = html.indexOf('<')
-      if (textEnd === 0) {
+    if (!lastTag || !isPlainTextElement(lastTag)) {   //如果当前标签不存在或者标签名称不为script，style，textarea
+      let textEnd = html.indexOf('<')   //开始截取标签的开始位置
+      if (textEnd === 0) {  //ok 确实你标签的时候并且是在最开始的位置上
         // Comment:
-        if (comment.test(html)) {
-          const commentEnd = html.indexOf('-->')
+        if (comment.test(html)) {   //当前是注释节点开头的
+          const commentEnd = html.indexOf('-->')  //为了确保当前是注释节点，我们还需要获取尾巴看看
 
-          if (commentEnd >= 0) {
-            if (options.shouldKeepComment) {
-              options.comment(html.substring(4, commentEnd), index, index + commentEnd + 3)
+          if (commentEnd >= 0) {    //如果当前确实是注释节点
+            if (options.shouldKeepComment) {      //当前为comments选项，是否保留注释节点，默认是不保留注释节点
+              options.comment(html.substring(4, commentEnd), index, index + commentEnd + 3) //截取注释节点的内容并回调一个起始位置加一个结束位置
             }
-            advance(commentEnd + 3)
-            continue
+            advance(commentEnd + 3)   //获取新的字符串
+            continue    //注释字符串任务完成 继续循环
           }
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
-        if (conditionalComment.test(html)) {
-          const conditionalEnd = html.indexOf(']>')
+        if (conditionalComment.test(html)) {    //如果当前是条件注释节点
+          const conditionalEnd = html.indexOf(']>') //再次确认下是否为条件注释节点
 
-          if (conditionalEnd >= 0) {
-            advance(conditionalEnd + 2)
-            continue
+          if (conditionalEnd >= 0) {  //如果确实是
+            advance(conditionalEnd + 2) //ok 截取掉 获取新的字符串
+            continue    //注释节点字符串任务完成 继续循环
           }
         }
 
         // Doctype:
-        const doctypeMatch = html.match(doctype)
-        if (doctypeMatch) {
-          advance(doctypeMatch[0].length)
-          continue
+        const doctypeMatch = html.match(doctype)    //继续验证当前是否为Doctype 节点
+        if (doctypeMatch) {   //如果是则继续
+          advance(doctypeMatch[0].length)   //截取掉doc节点，得到新的字符串
+          continue    //验证doc节点完成 继续循环
         }
 
         // End tag:
-        const endTagMatch = html.match(endTag)
-        if (endTagMatch) {
-          const curIndex = index
-          advance(endTagMatch[0].length)
-          parseEndTag(endTagMatch[1], curIndex, index)
-          continue
+        const endTagMatch = html.match(endTag)    //验证当前是否为结束节点
+        if (endTagMatch) {  //如果是 数据将会是这样[ '</div>', 'div'] 
+          const curIndex = index //缓存当前的全局字符串索引 
+          advance(endTagMatch[0].length)    //截取当前全局字符串并更新html及index 
+          parseEndTag(endTagMatch[1], curIndex, index)  //传入当前结束标签名称及当前未更新过后的index及更新过后的index
+          continue    //完成任务继续循环
         }
 
         // Start tag:
-        const startTagMatch = parseStartTag()
-        if (startTagMatch) {
-          handleStartTag(startTagMatch)
-          if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
-            advance(1)
+        const startTagMatch = parseStartTag()   //解析开始节点并返回数据
+        if (startTagMatch) {  //如果是一个完整的标签的话 
+          handleStartTag(startTagMatch)   //格式化完数据并存储成功，通知完毕，结束他的任务
+          if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {    //如果当前开头是换行符开头的
+            advance(1)  //截取掉，并更新html及index
           }
-          continue
+          continue    //完成任务继续循环
         }
       }
 
@@ -189,44 +195,56 @@ export function parseHTML (html, options) {
       }
       break
     }
+
   }
 
   // Clean up any remaining tags
   parseEndTag()
-
+/**
+ * 根据传递过来的字符串索引，截取字符串及获取到新字符串的起始位置
+ * @param {*} n 
+ */
   function advance (n) {
     index += n
     html = html.substring(n)
   }
-
+/**
+ * 解析开始节点
+ * 主要是获取当前是否为一个完整的标签 如果是则返回标签名称、标签的开始位置、标签类型、标签的属性值。否则返回undefined
+ * 
+ */
   function parseStartTag () {
-    const start = html.match(startTagOpen)
-    if (start) {
-      const match = {
-        tagName: start[1],
-        attrs: [],
-        start: index
+    const start = html.match(startTagOpen)    //匹配到当前节点的开始下标为0的（‘<’ 加 ‘标签名’）和下标为一的标签名
+    if (start) { //如果当前匹配到了
+      const match = {   //重新组织数据
+        tagName: start[1],  //获取到当前的标签名
+        attrs: [],    //声明一个空数据来存储数据
+        start: index  //当前开始节点在整个字符串中的位置
       }
-      advance(start[0].length)
-      let end, attr
-      while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {
-        attr.start = index
-        advance(attr[0].length)
-        attr.end = index
-        match.attrs.push(attr)
+      advance(start[0].length)   //继续截取掉已经验证过的字符串，并返回新的字符串
+      let end, attr     //声明两个变量
+      while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {   //如果当前没有匹配到开始标签的闭合部分并且在匹配到属性的情况下继续，直到匹配到了结束标签
+        attr.start = index    //把当前的开始位置赋值接start属性
+        advance(attr[0].length)   //并重新截取掉已经验证过的字符 得到新的字符及位置
+        attr.end = index  //赋值结束位置
+        match.attrs.push(attr)    //再赋值当前标签的属性
       }
-      if (end) {
-        match.unarySlash = end[1]
-        advance(end[0].length)
-        match.end = index
-        return match
+      if (end) {  //再次判断当前结束标签是否存在 如果当前结束标签是存在的则为一个完整的标签 
+        match.unarySlash = end[1] //给定当前是否为一个一元标签
+        advance(end[0].length)    //继续更新字符串
+        match.end = index //新的位置
+        return match    //返回当前match对象
       }
     }
   }
-
+/**
+ * 此方法总体来说就是格式化已知的属性对象，并调用回调的start方法通知。存储当前非一元标签的值到stack中，并更新最近一个标签名称lastTag
+ * 
+ * @param {*} match 包含当前开始标签的所有信息 
+ */
   function handleStartTag (match) {
-    const tagName = match.tagName
-    const unarySlash = match.unarySlash
+    const tagName = match.tagName   //首先我们缓存当前的节点名称
+    const unarySlash = match.unarySlash   //继续缓存当前标签是否为一元标签
 
     if (expectHTML) {
       if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
@@ -237,83 +255,89 @@ export function parseHTML (html, options) {
       }
     }
 
-    const unary = isUnaryTag(tagName) || !!unarySlash
+    const unary = isUnaryTag(tagName) || !!unarySlash     //优先判断当前标签名称是否为一个一元标签，否者就取当前unarySlash值作为值
 
-    const l = match.attrs.length
-    const attrs = new Array(l)
+    const l = match.attrs.length    //缓存一个属性对象的长度
+    const attrs = new Array(l)    //并重新创建一个新的数组
     for (let i = 0; i < l; i++) {
-      const args = match.attrs[i]
-      const value = args[3] || args[4] || args[5] || ''
-      const shouldDecodeNewlines = tagName === 'a' && args[1] === 'href'
-        ? options.shouldDecodeNewlinesForHref
-        : options.shouldDecodeNewlines
+      const args = match.attrs[i]   //便利当前数组 并获取到每个值
+      const value = args[3] || args[4] || args[5] || ''   //获取到当前最终属性的值
+      const shouldDecodeNewlines = tagName === 'a' && args[1] === 'href'    //如果当前标签名是'a'标签并且属性名为'href'
+        ? options.shouldDecodeNewlinesForHref   //使用a标签 要对 a 标签的 href 属性值中的换行符或制表符做兼容处理
+        : options.shouldDecodeNewlines  //要对属性值中的换行符或制表符做兼容处理
       attrs[i] = {
-        name: args[1],
-        value: decodeAttr(value, shouldDecodeNewlines)
+        name: args[1],   //获取到属性名
+        value: decodeAttr(value, shouldDecodeNewlines)    //返回最终处理过后的value值
       }
-      if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
-        attrs[i].start = args.start + args[0].match(/^\s*/).length
-        attrs[i].end = args.end
+      if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {   //如果当前是非开发环境下并且outputSourceRange值为真
+        attrs[i].start = args.start + args[0].match(/^\s*/).length  //继续添加属性start
+        attrs[i].end = args.end   //继续添加属性end
       }
     }
 
-    if (!unary) {
-      stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs, start: match.start, end: match.end })
-      lastTag = tagName
+    if (!unary) { //如果当前不是一个一元标签
+      stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs, start: match.start, end: match.end })    //存储当前非一元标签的名称、小写节点名称、格式化后的属性及value、节点的起始位置接开始位置
+      lastTag = tagName  //把最新的标签名称赋值到lastTag上
     }
 
-    if (options.start) {
-      options.start(tagName, attrs, unary, match.start, match.end)
+    if (options.start) {  //如果当前有传递start方法的情况下
+      options.start(tagName, attrs, unary, match.start, match.end)    //则调用并回调给 节点名称、节点属性对象、是否为一元标签、开始位置、结束位置
     }
   }
-
+/**
+ * 此方法主要是验证当前结束标签是否存在解析完成，没有就给出警告，并处理特殊标签br及p标签
+ * 
+ * @param {*} tagName  //结束标签名称
+ * @param {*} start   //结束标签在全局字符串下的开始位置
+ * @param {*} end //结束标签在全局字符串下的结束位置
+ */
   function parseEndTag (tagName, start, end) {
-    let pos, lowerCasedTagName
-    if (start == null) start = index
-    if (end == null) end = index
+    let pos, lowerCasedTagName    //声明两个变量
+    if (start == null) start = index  //如果当前start没有则使用index
+    if (end == null) end = index    //如果当前end没有则使用index
 
     // Find the closest opened tag of the same type
-    if (tagName) {
-      lowerCasedTagName = tagName.toLowerCase()
-      for (pos = stack.length - 1; pos >= 0; pos--) {
-        if (stack[pos].lowerCasedTag === lowerCasedTagName) {
-          break
+    if (tagName) {  //如果当前结束标签存在
+      lowerCasedTagName = tagName.toLowerCase()   //转个小写
+      for (pos = stack.length - 1; pos >= 0; pos--) {   //开始循环查找stack中对应的标签
+        if (stack[pos].lowerCasedTag === lowerCasedTagName) {   //如果找到了
+          break   //结束循环
         }
       }
-    } else {
+    } else {    //不存在直接为空处理
       // If no tag name is provided, clean shop
       pos = 0
     }
 
-    if (pos >= 0) {
+    if (pos >= 0) {   //如果当前pos大于0，为啥会这样呢？因为标签可能会是没有写全的情况下
       // Close all the open elements, up the stack
-      for (let i = stack.length - 1; i >= pos; i--) {
-        if (process.env.NODE_ENV !== 'production' &&
+      for (let i = stack.length - 1; i >= pos; i--) {   //继续循环stack
+        if (process.env.NODE_ENV !== 'production' &&    //如果当前是在开发环境下
           (i > pos || !tagName) &&
           options.warn
-        ) {
+        ) {   //并且当前结束标签不存在
           options.warn(
-            `tag <${stack[i].tag}> has no matching end tag.`,
+            `tag <${stack[i].tag}> has no matching end tag.`,   //贴出一个警告
             { start: stack[i].start, end: stack[i].end }
           )
         }
-        if (options.end) {
-          options.end(stack[i].tag, start, end)
+        if (options.end) {    //如果有传递end回调方法
+          options.end(stack[i].tag, start, end)   //给出end回调 当前节点名称 开始及结束位置
         }
       }
 
       // Remove the open elements from the stack
-      stack.length = pos
-      lastTag = pos && stack[pos - 1].tag
-    } else if (lowerCasedTagName === 'br') {
-      if (options.start) {
-        options.start(tagName, [], true, start, end)
+      stack.length = pos  //更新stack数组
+      lastTag = pos && stack[pos - 1].tag   //并更新lastTag
+    } else if (lowerCasedTagName === 'br') {    //走到这里就很奇葩了，一般在没写开始标签的情况下都会被浏览器忽略掉 但是br和p标签则不会
+      if (options.start) {    //start回调方法存在？
+        options.start(tagName, [], true, start, end)  //ok 回调给他
       }
-    } else if (lowerCasedTagName === 'p') {
+    } else if (lowerCasedTagName === 'p') {   //p标签也一样
       if (options.start) {
         options.start(tagName, [], false, start, end)
       }
-      if (options.end) {
+      if (options.end) {    //只是需要手动补全补全标签
         options.end(tagName, start, end)
       }
     }
