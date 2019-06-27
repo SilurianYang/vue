@@ -70,7 +70,6 @@ function decodeAttr (value, shouldDecodeNewlines) {
  * @param {*} options   //一个需要的配置信息
  */
 export function parseHTML (html, options) {
-  debugger
   // 一开始定义一坨常量
   const stack = []    //如果每次循环遇到一个 非一元标签都会往这里面加
   const expectHTML = options.expectHTML   //
@@ -84,7 +83,7 @@ export function parseHTML (html, options) {
     // Make sure we're not in a plaintext content element like script/style
     if (!lastTag || !isPlainTextElement(lastTag)) {   //如果当前标签不存在或者标签名称不为script，style，textarea
       let textEnd = html.indexOf('<')   //开始截取标签的开始位置
-      if (textEnd === 0) {  //ok 确实你标签的时候并且是在最开始的位置上
+      if (textEnd === 0) {  //ok 确实你标签的时候并且是在最开始的位置上   优先作为 注释标签、条件注释、开始标识 以及 结束标签 处理
         // Comment:
         if (comment.test(html)) {   //当前是注释节点开头的
           const commentEnd = html.indexOf('-->')  //为了确保当前是注释节点，我们还需要获取尾巴看看
@@ -136,61 +135,61 @@ export function parseHTML (html, options) {
       }
 
       let text, rest, next
-      if (textEnd >= 0) {
-        rest = html.slice(textEnd)
+      if (textEnd >= 0) {  //解析完开始标签为<的所有有可能的类型后，将会再判断当前是否是一个文本类型或者是一个标签
+        rest = html.slice(textEnd)  //把当前字符串截取掉，确保是以<开头的位置
         while (
-          !endTag.test(rest) &&
-          !startTagOpen.test(rest) &&
-          !comment.test(rest) &&
-          !conditionalComment.test(rest)
-        ) {
+          !endTag.test(rest) &&   //如果当前这个字符串标签不是结束标签
+          !startTagOpen.test(rest) &&   //不是一个正常的开始标签
+          !comment.test(rest) &&  //不是一个注释节点
+          !conditionalComment.test(rest)  //不是一个条件注释节点
+        ) {   //说白了 必须是一个字符串类型的才能走进来分析
           // < in plain text, be forgiving and treat it as text
-          next = rest.indexOf('<', 1)
-          if (next < 0) break
-          textEnd += next
-          rest = html.slice(textEnd)
+          next = rest.indexOf('<', 1) //查找下一个<开头的符号，并重第一个开始之后找
+          if (next < 0) break //如果当前类似于<开头的标签没找到了，没必要找了，直接返回
+          textEnd += next //继续更新当前标签位置
+          rest = html.slice(textEnd)  //接续截取
         }
-        text = html.substring(0, textEnd)
+        text = html.substring(0, textEnd)   //获取到已经验证完毕的字符串 确定完这是一个文本类型
       }
 
-      if (textEnd < 0) {
+      if (textEnd < 0) {    //这里更好说了，反正没找到类似<的标签，直接把你当字符串就行了 
         text = html
       }
 
-      if (text) {
-        advance(text.length)
+      if (text) { //如果当前这个字符串为真
+        advance(text.length)  //继续截取整个html和更新index
       }
 
-      if (options.chars && text) {
-        options.chars(text, index - text.length, index)
+      if (options.chars && text) {    //如果有传递这个chars回调方法,并且字符串是存在的情况下
+        options.chars(text, index - text.length, index)   //开始传递过去，包括当前字符串 、开始位置、结束位置
       }
-    } else {
-      let endTagLength = 0
-      const stackedTag = lastTag.toLowerCase()
-      const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
-      const rest = html.replace(reStackedTag, function (all, text, endTag) {
-        endTagLength = endTag.length
-        if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
+    } else {    //当前标签存在 并且是一个已知排除的标签
+      let endTagLength = 0   //声明一个变量并 设置当前默认值为0  当前结束标签的长度
+      const stackedTag = lastTag.toLowerCase()      //当前标签名称的小写状态
+      const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))   //正则匹配当前标签的结束已前的所有字符 并缓存到当前模块下
+      const rest = html.replace(reStackedTag, function (all, text, endTag) {  //使用一个方法 替换相关的所有数据
+        endTagLength = endTag.length  //赋值当前节点名称的长度
+        if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {   //当前标签名称不是已知的script，style，textarea 并且也不是noscript标签
           text = text
             .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
             .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1')
         }
-        if (shouldIgnoreFirstNewline(stackedTag, text)) {
-          text = text.slice(1)
+        if (shouldIgnoreFirstNewline(stackedTag, text)) { //匹配当前标签下的内容是否需要换行 第一个位置上
+          text = text.slice(1)  //需要则去除第一个换行符
         }
-        if (options.chars) {
-          options.chars(text)
+        if (options.chars) {  //继续  如果当前chars回调方法有传递 则继续传递
+          options.chars(text) //执行回调 只传递了一个当前字符串
         }
-        return ''
+        return '' //并返回一个空字符串来替换所有正则匹配到的
       })
-      index += html.length - rest.length
+      index += html.length - rest.length    //继续更新index 及html
       html = rest
-      parseEndTag(stackedTag, index - endTagLength, index)
+      parseEndTag(stackedTag, index - endTagLength, index)  //标记当前是否为一个完整的标签
     }
 
-    if (html === last) {
+    if (html === last) {  //如果当前什么都没做？ 说明是一个标签但是没有写全哦
       options.chars && options.chars(html)
-      if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
+      if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {   //开发环境下给出警告
         options.warn(`Mal-formatted tag at end of template: "${html}"`, { start: index + html.length })
       }
       break

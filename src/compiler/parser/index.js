@@ -21,32 +21,32 @@ import {
   getAndRemoveAttrByRegex
 } from '../helpers'
 
-export const onRE = /^@|^v-on:/
-export const dirRE = process.env.VBIND_PROP_SHORTHAND
+export const onRE = /^@|^v-on:/   //定义一个事件绑定的正则
+export const dirRE = process.env.VBIND_PROP_SHORTHAND   //定义一个是否为指令的正则
   ? /^v-|^@|^:|^\.|^#/
   : /^v-|^@|^:|^#/
-export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
-export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
-const stripParensRE = /^\(|\)$/g
-const dynamicArgRE = /^\[.*\]$/
+export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/  //定义了一个v-for的正则
+export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/     //定义了一个v-for类型时写法的正则
+const stripParensRE = /^\(|\)$/g  //定义一个以(开头的或者)结尾的正则
+const dynamicArgRE = /^\[.*\]$/   //定义一个[开头，中间任意字符]结尾的正则
 
-const argRE = /:(.*)$/
-export const bindRE = /^:|^\.|^v-bind:/
-const propBindRE = /^\./
-const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g
+const argRE = /:(.*)$/    //  定义了一个事件是否传递参数的正则
+export const bindRE = /^:|^\.|^v-bind:/ //定义一个是否为v-bind的正则
+const propBindRE = /^\./      //定义一个已.开头的正则
+const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g  //获取一个指令中的修辞符
 
-const slotRE = /^v-slot(:|$)|^#/
+const slotRE = /^v-slot(:|$)|^#/  //定义一个slot的正则
 
-const lineBreakRE = /[\r\n]/
-const whitespaceRE = /\s+/g
+const lineBreakRE = /[\r\n]/    //匹配一个换行符
+const whitespaceRE = /\s+/g     //匹配一个空白符全局
 
-const invalidAttributeRE = /[\s"'<>\/=]/
+const invalidAttributeRE = /[\s"'<>\/=]/    //匹配一个已知的符号
 
-const decodeHTMLCached = cached(he.decode)
+const decodeHTMLCached = cached(he.decode)    //给予一个缓存的decode方法
 
 export const emptySlotScopeToken = `_empty_`
 
-// configurable state
+// configurable state 定义了8个不同平台的标识符
 export let warn: any
 let delimiters
 let transforms
@@ -57,6 +57,12 @@ let platformMustUseProp
 let platformGetTagNamespace
 let maybeComponent
 
+/**
+ * 创建一个进本的描述对象
+ * @param {*} tag   标签名称
+ * @param {*} attrs   标签上所有的属性
+ * @param {*} parent    当前标签的父集标签
+ */
 export function createASTElement (
   tag: string,
   attrs: Array<ASTAttr>,
@@ -66,7 +72,7 @@ export function createASTElement (
     type: 1,
     tag,
     attrsList: attrs,
-    attrsMap: makeAttrsMap(attrs),
+    attrsMap: makeAttrsMap(attrs),    //解析穿入的attrs，成为一个一级对象
     rawAttrsMap: {},
     parent,
     children: []
@@ -80,28 +86,28 @@ export function parse (
   template: string,
   options: CompilerOptions
 ): ASTElement | void {
-  warn = options.warn || baseWarn
+  warn = options.warn || baseWarn //在有传递warn 打印方法时，取warn 否则取baseWarn
 
-  platformIsPreTag = options.isPreTag || no
-  platformMustUseProp = options.mustUseProp || no
-  platformGetTagNamespace = options.getTagNamespace || no
-  const isReservedTag = options.isReservedTag || no
+  platformIsPreTag = options.isPreTag || no //是否通过isPreTag来判断给定的标签名是否为一个<pre>标签，默认false
+  platformMustUseProp = options.mustUseProp || no   //是否需要判读当前给定标签需要使用原生的prop进行绑定，默认false
+  platformGetTagNamespace = options.getTagNamespace || no //获取当前标签的命名空间
+  const isReservedTag = options.isReservedTag || no   //当前的标签名是否为一个保留的标签名，默认false
   maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag)
 
-  transforms = pluckModuleFunction(options.modules, 'transformNode')
-  preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
-  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
+  transforms = pluckModuleFunction(options.modules, 'transformNode')    //提取指定对象中的transformNode 没有则返回[]
+  preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')   //提取指定对象中的preTransformNode 没有则返回[]
+  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')  //提取指定对象中的postTransformNode 没有则返回[]
 
-  delimiters = options.delimiters
+  delimiters = options.delimiters //当前是否传递了自定义的插入表达式
 
-  const stack = []
-  const preserveWhitespace = options.preserveWhitespace !== false
-  const whitespaceOption = options.whitespace
-  let root
-  let currentParent
-  let inVPre = false
-  let inPre = false
-  let warned = false
+  const stack = []    //声明一个存入顶级父节点的容器
+  const preserveWhitespace = options.preserveWhitespace !== false   //当前是否需要放弃标签之前的空格 默认为true
+  const whitespaceOption = options.whitespace 
+  let root  //继续声明一个最终tree树
+  let currentParent //当前已知的循环到的tree树插入位置
+  let inVPre = false  //是否在拥有 v-pre 的标签之内
+  let inPre = false //是否在 <pre></pre> 标签之内
+  let warned = false  //作为一个打印错误信息的开关 默认为打开
 
   function warnOnce (msg, range) {
     if (!warned) {
@@ -204,39 +210,39 @@ export function parse (
   parseHTML(template, {
     warn,
     expectHTML: options.expectHTML,
-    isUnaryTag: options.isUnaryTag,
+    isUnaryTag: options.isUnaryTag,  
     canBeLeftOpenTag: options.canBeLeftOpenTag,
     shouldDecodeNewlines: options.shouldDecodeNewlines,
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
-    start (tag, attrs, unary, start, end) {
+    start (tag, attrs, unary, start, end) {     //字符串时每次遇到 开始标签 时就会调用该函数
       // check namespace.
       // inherit parent ns if there is one
-      const ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag)
+      const ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag)    //获取当前父元素的命名空间 如果当前父元素存在则直接使用父元素的
 
       // handle IE svg bug
       /* istanbul ignore if */
-      if (isIE && ns === 'svg') {
-        attrs = guardIESVGBug(attrs)
-      }
+      if (isIE && ns === 'svg') {   //他说svg在ie上会出现一个bug 需要手动修复下
+        attrs = guardIESVGBug(attrs)    //处理完attrs后获取到标准的值
+      } 
 
-      let element: ASTElement = createASTElement(tag, attrs, currentParent)
-      if (ns) {
-        element.ns = ns
+      let element: ASTElement = createASTElement(tag, attrs, currentParent) //  通过createASTElement函数得到新的数据值
+      if (ns) { //继续判断 当前的标签名称是否存在
+        element.ns = ns //存在的话 我们在原有的对象上重新声明一个属性
       }
 
       if (process.env.NODE_ENV !== 'production') {
-        if (options.outputSourceRange) {
+        if (options.outputSourceRange) {    //在开发环境下 outputSourceRange为真时
           element.start = start
           element.end = end
-          element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => {
+          element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => { //重新组装attr的数据
             cumulated[attr.name] = attr
             return cumulated
           }, {})
         }
         attrs.forEach(attr => {
-          if (invalidAttributeRE.test(attr.name)) {
+          if (invalidAttributeRE.test(attr.name)) { //验证当前标签是否为已知写法的标签 存在则抛出错误
             warn(
               `Invalid dynamic argument expression: attribute names cannot contain ` +
               `spaces, quotes, <, >, / or =.`,
@@ -249,9 +255,9 @@ export function parse (
         })
       }
 
-      if (isForbiddenTag(element) && !isServerRendering()) {
-        element.forbidden = true
-        process.env.NODE_ENV !== 'production' && warn(
+      if (isForbiddenTag(element) && !isServerRendering()) {  //如果当前是宿主环境是在非服务端下 并且是非被vue禁止的标签
+        element.forbidden = true  //又添加了一个属性 被禁止的
+        process.env.NODE_ENV !== 'production' && warn(    //并给出了警告  你不能使用这个标签哦  巴啦巴拉一大堆
           'Templates should only be responsible for mapping the state to the ' +
           'UI. Avoid placing tags with side-effects in your templates, such as ' +
           `<${tag}>` + ', as they will not be parsed.',
@@ -297,7 +303,7 @@ export function parse (
       }
     },
 
-    end (tag, start, end) {
+    end (tag, start, end) {   //每次遇到 结束标签 时就会调用该函数
       const element = stack[stack.length - 1]
       // pop stack
       stack.length -= 1
@@ -308,7 +314,7 @@ export function parse (
       closeElement(element)
     },
 
-    chars (text: string, start: number, end: number) {
+    chars (text: string, start: number, end: number) {  //每次遇到 纯文本 时就会调用该函数
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
           if (text === template) {
@@ -379,7 +385,7 @@ export function parse (
         }
       }
     },
-    comment (text: string, start, end) {
+    comment (text: string, start, end) {  //每次遇到 注释节点 时就会调用该函数
       // adding anyting as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
       if (currentParent) {
@@ -930,7 +936,10 @@ function makeAttrsMap (attrs: Array<Object>): Object {
 function isTextTag (el): boolean {
   return el.tag === 'script' || el.tag === 'style'
 }
-
+/**
+ * 当前禁止使用脚本在dom中插入 或者是style标签
+ * @param {*} el 当前tree数据 
+ */
 function isForbiddenTag (el): boolean {
   return (
     el.tag === 'style' ||
@@ -941,10 +950,14 @@ function isForbiddenTag (el): boolean {
   )
 }
 
-const ieNSBug = /^xmlns:NS\d+/
+const ieNSBug = /^xmlns:NS\d+/  //声明了两个正则
 const ieNSPrefix = /^NS\d+:/
 
-/* istanbul ignore next */
+/* istanbul ignore next */  
+/**
+ * 重新改造attr中多余的元素，并返回处理完成后的值
+ * @param {*} attrs 
+ */
 function guardIESVGBug (attrs) {
   const res = []
   for (let i = 0; i < attrs.length; i++) {

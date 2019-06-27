@@ -11,6 +11,11 @@ export function baseWarn (msg: string, range?: Range) {
 }
 /* eslint-enable no-unused-vars */
 
+/**
+ * 提取指定一级对象中的key  value 到新的对象中
+ * @param {*} modules   当前一级对象
+ * @param {*} key   需要提取的指定key
+ */
 export function pluckModuleFunction<F: Function> (
   modules: ?Array<Object>,
   key: string
