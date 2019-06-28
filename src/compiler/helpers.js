@@ -185,25 +185,34 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * 注意：这只会从数组（attrsList）中删除attr以便它
+  不会被processAttrs处理。
+  默认情况下，它不会从地图中删除它（attrsMap），因为地图是
+  在codegen期间需要。
+ * @param {*} el 
+ * @param {*} name 
+ * @param {*} removeFromMap 
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,
   removeFromMap?: boolean
 ): ?string {
   let val
-  if ((val = el.attrsMap[name]) != null) {
+  if ((val = el.attrsMap[name]) != null) {    //如果当前属性在attrsMap中不存在？
     const list = el.attrsList
-    for (let i = 0, l = list.length; i < l; i++) {
-      if (list[i].name === name) {
+    for (let i = 0, l = list.length; i < l; i++) {  //则便利attrsList中的数据 查看指定的key是否包含在当前数组下  
+      if (list[i].name === name) {    //包含则删除他  然后停止
         list.splice(i, 1)
         break
       }
     }
   }
-  if (removeFromMap) {
+  if (removeFromMap) {    //如果当前确定删除attrsMap中的数据  同时也删除attrsMap
     delete el.attrsMap[name]
   }
-  return val
+  return val  //最后返回attrsMap中指定的key对应的值  可能是undfined
 }
 
 export function getAndRemoveAttrByRegex (

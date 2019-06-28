@@ -122,9 +122,9 @@ export function parse (
       element = processElement(element, options)
     }
     // tree management
-    if (!stack.length && element !== root) {
+    if (!stack.length && element !== root) {  //如果当前需要关闭的标签不是一个根节点标签
       // allow root elements with v-if, v-else-if and v-else
-      if (root.if && (element.elseif || element.else)) {
+      if (root.if && (element.elseif || element.else)) {  
         if (process.env.NODE_ENV !== 'production') {
           checkRootConstraints(element)
         }
@@ -141,9 +141,9 @@ export function parse (
         )
       }
     }
-    if (currentParent && !element.forbidden) {
-      if (element.elseif || element.else) {
-        processIfConditions(element, currentParent)
+    if (currentParent && !element.forbidden) {    //如果当前这个对象存在 并且当前的描述对象标签名称不是vue禁止的标签名
+      if (element.elseif || element.else) {  //如果当然描述对象还使用了v-else-if 或者是 v-else
+        processIfConditions(element, currentParent)   //在当前的描述对象下插入对应的描述对象
       } else {
         if (element.slotScope) {
           // scoped slot
@@ -189,16 +189,19 @@ export function parse (
       }
     }
   }
-
+/**
+ * 验证当前跟节点的标签名称是否正确
+ * @param {*} el  需要验证的el tree树
+ */
   function checkRootConstraints (el) {
-    if (el.tag === 'slot' || el.tag === 'template') {
+    if (el.tag === 'slot' || el.tag === 'template') {   //不允许slot 和 template 一个是具有插槽功能的，取决于外部标签。一个是抽象语法标签template，他是不存在的
       warnOnce(
         `Cannot use <${el.tag}> as component root element because it may ` +
         'contain multiple nodes.',
         { start: el.start }
       )
     }
-    if (el.attrsMap.hasOwnProperty('v-for')) {
+    if (el.attrsMap.hasOwnProperty('v-for')) {  //跟节点上是不支持有多个节点的 所有是禁止使用v-for的
       warnOnce(
         'Cannot use v-for on stateful component root element because ' +
         'it renders multiple elements.',
@@ -216,6 +219,24 @@ export function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
+
+    /**
+     * 1.start 钩子函数是当解析 html 字符串遇到开始标签时被调用的
+     * 2.模板中禁止使用 <style> 标签和那些没有指定 type 属性或 type 属性值为 text/javascript 的 <script> 标签
+     * 3.执行preTransforms数组中的函数，为不同的平台编译不同的代码
+     * 4.通过process*系列函数加工描述对象
+     * 5.判断当前标签是否满足根节点标签，根节点上不能存在使用v-for及  slot template
+     * 6.可以定义多个根元素，但必须使用 v-if、v-else-if 以及 v-else 保证有且仅有一个根元素被渲染
+     * 7.把当前解析到的非一元标签描述对象存在currentParent中并保留没此顶级对象到stack中
+     * 8.遇到一元标签则直接关闭标签，判断当前标签是否使用了 v-else-if 或 v-else 指令，则该元素不会作为子节点，而是会被添加到相符的使用了 v-if 指令的元素描述对象的 ifConditions 数组中
+     * 9.使用了 slot-scope 特性，则该元素也不会作为子节点，它会被添加到父级元素描述对象的 scopedSlots 属性中
+     * 10.对于没有使用条件指令或 slot-scope 特性的元素，会正常建立父子级关系
+     * @param {*} tag 
+     * @param {*} attrs 
+     * @param {*} unary 
+     * @param {*} start 
+     * @param {*} end 
+     */
     start (tag, attrs, unary, start, end) {     //字符串时每次遇到 开始标签 时就会调用该函数
       // check namespace.
       // inherit parent ns if there is one
@@ -266,40 +287,40 @@ export function parse (
       }
 
       // apply pre-transforms
-      for (let i = 0; i < preTransforms.length; i++) {
+      for (let i = 0; i < preTransforms.length; i++) {  //通过不同平台提供的方法 规范并获取到新的值
         element = preTransforms[i](element, options) || element
       }
 
-      if (!inVPre) {
-        processPre(element)
-        if (element.pre) {
-          inVPre = true
+      if (!inVPre) {  //当前编译器解析的时候是处于一个非v-pre标签模式下
+        processPre(element)   //判断当前是否挂载了v-pre指令
+        if (element.pre) {  //有挂载？
+          inVPre = true   //好的 现在是处于一个v-pre标签解析模式下
         }
       }
-      if (platformIsPreTag(element.tag)) {
-        inPre = true
+      if (platformIsPreTag(element.tag)) {    //查看当前标签是不是原生的pre标签  
+        inPre = true    //是的情况下则挂载为true
       }
-      if (inVPre) {
-        processRawAttrs(element)
-      } else if (!element.processed) {
+      if (inVPre) {  //如果当前是在解析v-pre的模式下
+        processRawAttrs(element)    //在当前的描述对象上添加上对应的描述信息
+      } else if (!element.processed) {  //当前标签是否已经被解析过了？ 解析完成后的tree每个描述对象上都有processed 
         // structural directives
-        processFor(element)
+        processFor(element)   //新增一个v-for的描述信息
         processIf(element)
         processOnce(element)
       }
 
-      if (!root) {
-        root = element
-        if (process.env.NODE_ENV !== 'production') {
-          checkRootConstraints(root)
+      if (!root) {    //第一次根节点不存在，ok
+        root = element  //赋值根节点
+        if (process.env.NODE_ENV !== 'production') {    //在开发环境下需要判断下当前根节点是否满足规范
+          checkRootConstraints(root)  
         }
       }
 
-      if (!unary) {
-        currentParent = element
-        stack.push(element)
+      if (!unary) { //如果当前是一个非一元标签
+        currentParent = element   //保留顶级对象
+        stack.push(element)   //加入顶级对象到stack中
       } else {
-        closeElement(element)
+        closeElement(element) //如果当前是一个一元标签，直接关闭
       }
     },
 
@@ -404,31 +425,41 @@ export function parse (
   })
   return root
 }
-
+/**
+ * 标记一个一个节点是否使用了v-pre
+ * @param {*} el 
+ */
 function processPre (el) {
-  if (getAndRemoveAttr(el, 'v-pre') != null) {
+  if (getAndRemoveAttr(el, 'v-pre') != null) {  
     el.pre = true
   }
 }
-
+/**
+ * 设置一个描述对象是否为pre编译模式 并新增上attrs属性及子节点上新增plain的标识为true
+ * 1.如果标签使用了 v-pre 指令，则该标签的元素描述对象的 element.pre 属性将为 true
+ * 2.对于使用了 v-pre 指令的标签及其子代标签，它们的任何属性都将会被作为原始属性处理
+ * 3.添加 element.attrs 属性 每个value值都是通过JSON.stringify()处理完成得
+ * 4.v-pre 指令标签的子代标签在没有使用v-pre的时候 则会设置plain:true
+ * @param {*} el 
+ */
 function processRawAttrs (el) {
-  const list = el.attrsList
+  const list = el.attrsList   //获取当前描述对象的attrsList
   const len = list.length
-  if (len) {
-    const attrs: Array<ASTAttr> = el.attrs = new Array(len)
+  if (len) {    //如果当前这个属性数组长度不等于0，说明是有属性的
+    const attrs: Array<ASTAttr> = el.attrs = new Array(len)   //ok 声明了一个同样长度的数组，并在当前的描述对象上添加上一个attrs的新属性
     for (let i = 0; i < len; i++) {
-      attrs[i] = {
+      attrs[i] = {    //循环并赋值一个新的属性
         name: list[i].name,
-        value: JSON.stringify(list[i].value)
+        value: JSON.stringify(list[i].value)      //确保是一个真正的字符串
       }
-      if (list[i].start != null) {
+      if (list[i].start != null) {    //如果原始的attrsList有start属性  则新对象上也应该有
         attrs[i].start = list[i].start
         attrs[i].end = list[i].end
       }
     }
-  } else if (!el.pre) {
+  } else if (!el.pre) {  //如果当前这个描述对象上即没有属性并且pre数组又不存在，但是有时在vpre解析模式下  那他绝对是pre标签下的子节点
     // non root node in pre blocks with no attributes
-    el.plain = true
+    el.plain = true   //那么设置他的属性plain为true
   }
 }
 
@@ -494,11 +525,11 @@ function processRef (el) {
 
 export function processFor (el: ASTElement) {
   let exp
-  if ((exp = getAndRemoveAttr(el, 'v-for'))) {
-    const res = parseFor(exp)
-    if (res) {
-      extend(el, res)
-    } else if (process.env.NODE_ENV !== 'production') {
+  if ((exp = getAndRemoveAttr(el, 'v-for'))) {  //判断当前描述对象上是否有写v-for指令
+    const res = parseFor(exp)   //解析v-for对应的所有值
+    if (res) {  //如果有匹配到值
+      extend(el, res) //则直接混入到当前的描述对象中
+    } else if (process.env.NODE_ENV !== 'production') {   //如果没有匹配到？ 警告当前这个v-for 这个指令是无效的
       warn(
         `Invalid v-for expression: ${exp}`,
         el.rawAttrsMap['v-for']
@@ -513,24 +544,27 @@ type ForParseResult = {
   iterator1?: string;
   iterator2?: string;
 };
-
+/**
+ *  
+ * @param {*} exp  一个v-for 循环的值
+ */
 export function parseFor (exp: string): ?ForParseResult {
-  const inMatch = exp.match(forAliasRE)
-  if (!inMatch) return
+  const inMatch = exp.match(forAliasRE)   //匹配当前for 正则
+  if (!inMatch) return  //如果没有匹配到 则直接返回undefined
   const res = {}
-  res.for = inMatch[2].trim()
-  const alias = inMatch[1].trim().replace(stripParensRE, '')
-  const iteratorMatch = alias.match(forIteratorRE)
-  if (iteratorMatch) {
-    res.alias = alias.replace(forIteratorRE, '').trim()
-    res.iterator1 = iteratorMatch[1].trim()
+  res.for = inMatch[2].trim() //获取当前for的目标
+  const alias = inMatch[1].trim().replace(stripParensRE, '')    //获取到当前循环的item
+  const iteratorMatch = alias.match(forIteratorRE)    //正则匹配有没有写其他key值
+  if (iteratorMatch) {  //如果没有写 
+    res.alias = alias.replace(forIteratorRE, '').trim()   //重新匹配到值后 重复赋值
+    res.iterator1 = iteratorMatch[1].trim() //第二个key
     if (iteratorMatch[2]) {
-      res.iterator2 = iteratorMatch[2].trim()
+      res.iterator2 = iteratorMatch[2].trim() //第三个key
     }
   } else {
-    res.alias = alias
+    res.alias = alias //直接就使用原来匹配到的item作为值
   }
-  return res
+  return res    //最后返回当前组装完成得数据
 }
 
 function processIf (el) {
@@ -551,10 +585,14 @@ function processIf (el) {
     }
   }
 }
-
+/**
+ * if else-if else 节点的生成
+ * @param {*} el  当前节点
+ * @param {*} parent  当前parent节点
+ */
 function processIfConditions (el, parent) {
-  const prev = findPrevElement(parent.children)
-  if (prev && prev.if) {
+  const prev = findPrevElement(parent.children) //获取到一个指定的tree树
+  if (prev && prev.if) {  //如果当前这个tree树存在，并且是使用v-if的情况下
     addIfCondition(prev, {
       exp: el.elseif,
       block: el
@@ -567,14 +605,17 @@ function processIfConditions (el, parent) {
     )
   }
 }
-
+/**
+ * 查找当前指定描述对象，并把多余的删除。更改的原始对象
+ * @param {*} children 
+ */
 function findPrevElement (children: Array<any>): ASTElement | void {
   let i = children.length
   while (i--) {
-    if (children[i].type === 1) {
+    if (children[i].type === 1) {   //查找一个节点为元素节点的 返回过去
       return children[i]
-    } else {
-      if (process.env.NODE_ENV !== 'production' && children[i].text !== ' ') {
+    } else {  //没有找到则删除最后一个元素
+      if (process.env.NODE_ENV !== 'production' && children[i].text !== ' ') {  //如果当前在开发环境下及当前text等于空 则警告 
         warn(
           `text "${children[i].text.trim()}" between v-if and v-else(-if) ` +
           `will be ignored.`,
@@ -585,12 +626,16 @@ function findPrevElement (children: Array<any>): ASTElement | void {
     }
   }
 }
-
+/**
+ * 在当前的描述对象下 添加新的描述信息
+ * @param {*} el  当前指定父级描述对象
+ * @param {*} condition     包含匹配规则及当前子描述对象
+ */
 export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
   if (!el.ifConditions) {
     el.ifConditions = []
   }
-  el.ifConditions.push(condition)
+  el.ifConditions.push(condition) 
 }
 
 function processOnce (el) {

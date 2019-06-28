@@ -10,8 +10,10 @@
 
 <body>
     <div id="app">
-        <span></span>
-        <p></p>
+        <span v-for="item in 5">{{item}}</span>
+        <p v-if="true">牛逼</p>
+        <p v-else-if="2">牛逼2</p>
+        <p v-else>牛逼3</p>
     </div>
     <script src="./src/main.js"></script>
 </body>
