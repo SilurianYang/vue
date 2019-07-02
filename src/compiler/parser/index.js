@@ -305,8 +305,8 @@ export function parse (
       } else if (!element.processed) {  //当前标签是否已经被解析过了？ 解析完成后的tree每个描述对象上都有processed 
         // structural directives
         processFor(element)   //新增一个v-for的描述信息
-        processIf(element)
-        processOnce(element)
+        processIf(element)    //新增一个v-if、v-else、v-else-if描述信息
+        processOnce(element)    //新增一个v-once的描述信息
       }
 
       if (!root) {    //第一次根节点不存在，ok
@@ -467,7 +467,7 @@ export function processElement (
   element: ASTElement,
   options: CompilerOptions
 ) {
-  processKey(element)
+  processKey(element)   //添加key相对应的描述对象信息
 
   // determine whether this is a plain element after
   // removing structural attributes
@@ -477,31 +477,31 @@ export function processElement (
     !element.attrsList.length
   )
 
-  processRef(element)
-  processSlotContent(element)
-  processSlotOutlet(element)
-  processComponent(element)
+  processRef(element)   //添加ref相对应的描述对象信息
+  processSlotContent(element)     //添加slot相对应的描述对象信息
+  processSlotOutlet(element)    //添加 单元slot相对应的描述对象信息
+  processComponent(element)     //查看component 是否使用了 相对应的指令 并设置相对应的描述信息
   for (let i = 0; i < transforms.length; i++) {
     element = transforms[i](element, options) || element
   }
-  processAttrs(element)
+  processAttrs(element)   
   return element
 }
 
 function processKey (el) {
-  const exp = getBindingAttr(el, 'key')
+  const exp = getBindingAttr(el, 'key')   //继续获取当前描述对象上的key值
   if (exp) {
-    if (process.env.NODE_ENV !== 'production') {
-      if (el.tag === 'template') {
-        warn(
+    if (process.env.NODE_ENV !== 'production') {    //如果当前是在开发环境下
+      if (el.tag === 'template') {    //并且这个标签是template标签 给出警告
+        warn(   //给出警告 当前的template不需要写key值
           `<template> cannot be keyed. Place the key on real elements instead.`,
           getRawBindingAttr(el, 'key')
         )
       }
-      if (el.for) {
-        const iterator = el.iterator2 || el.iterator1
-        const parent = el.parent
-        if (iterator && iterator === exp && parent && parent.tag === 'transition-group') {
+      if (el.for) {   //如果当前的 v-for 是开发者写了的情况
+        const iterator = el.iterator2 || el.iterator1 //并且for循环中是写上了索引的情况
+        const parent = el.parent    //并且缓存一个parent
+        if (iterator && iterator === exp && parent && parent.tag === 'transition-group') {    //如果当前父元素上的标签名为transition-group 同样给出警告 
           warn(
             `Do not use v-for index as key on <transition-group> children, ` +
             `this is the same as not using keys.`,
@@ -511,15 +511,15 @@ function processKey (el) {
         }
       }
     }
-    el.key = exp
+    el.key = exp    //如果当前描述对象上的key存在 则添加上.key等于所对应的值
   }
 }
 
 function processRef (el) {
-  const ref = getBindingAttr(el, 'ref')
-  if (ref) {
-    el.ref = ref
-    el.refInFor = checkInFor(el)
+  const ref = getBindingAttr(el, 'ref')   //获取当前ref的值 
+  if (ref) {  //有则添加上ref的匹配参数
+    el.ref = ref    
+    el.refInFor = checkInFor(el)    //添加一个refInfor属性 确保当前ref是否包含在for循环内
   }
 }
 
@@ -567,21 +567,28 @@ export function parseFor (exp: string): ?ForParseResult {
   return res    //最后返回当前组装完成得数据
 }
 
+/**1.如果有使用v-if指令 则在当前描述对象上添加一个.if的属性并赋值为当前v-if指令的值
+ * 2.如果有使用v-if指令的时候 并在当前的描述对象上添加一个ifConditions数组，并存入当前tree对象
+ * 3.如果有使用v-else指令 则在当前描述对象上添加一个.else的属性并设置为true
+ * 4.如果有使用v-else-if指令，则在当前的描述对象上添加一个elseif的属性并设值为当前指令的匹配值
+ * 5.使用完v-else及v-else-if指令时 并不会生成正真的tree描述节点，而是在当前v-if描述节点对象上的ifConditions数组中添加当前描述对象
+ * @param {*} el 
+ */
 function processIf (el) {
-  const exp = getAndRemoveAttr(el, 'v-if')
-  if (exp) {
-    el.if = exp
-    addIfCondition(el, {
+  const exp = getAndRemoveAttr(el, 'v-if')    //获取到当前的v-if属性值并删除在el中的attrsList属性
+  if (exp) {  //如果当前这个用户是写了v-if指令的情况下
+    el.if = exp   //在当前的描述对象上添加一个.if的属性并赋值为当前v-if的匹配值
+    addIfCondition(el, {    //在当前的描述对象上添加新的ifConditions数组 存储当前的匹配规则及父组件tree对象的引用
       exp: exp,
       block: el
     })
   } else {
-    if (getAndRemoveAttr(el, 'v-else') != null) {
-      el.else = true
+    if (getAndRemoveAttr(el, 'v-else') != null) {   //如果当前的v-else属性值有写的情况下
+      el.else = true    //并在当前描述对象上添加一个.else的属性值
     }
-    const elseif = getAndRemoveAttr(el, 'v-else-if')
-    if (elseif) {
-      el.elseif = elseif
+    const elseif = getAndRemoveAttr(el, 'v-else-if')    //获取当前v-else-if的属性值
+    if (elseif) { //如果当前elseif有写的情况下
+      el.elseif = elseif  //在当前描述对象上添加一个.elseif的属性并赋值当前的v-else-if的匹配值
     }
   }
 }
@@ -639,9 +646,9 @@ export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
 }
 
 function processOnce (el) {
-  const once = getAndRemoveAttr(el, 'v-once')
-  if (once != null) {
-    el.once = true
+  const once = getAndRemoveAttr(el, 'v-once')   //获取当前v-once属性
+  if (once != null) {   //如果当前v-once指令存在
+    el.once = true    //则在当前的藐视对象上添加一个.once的属性并赋值为true
   }
 }
 
@@ -649,10 +656,10 @@ function processOnce (el) {
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
 function processSlotContent (el) {
   let slotScope
-  if (el.tag === 'template') {
-    slotScope = getAndRemoveAttr(el, 'scope')
+  if (el.tag === 'template') {    //判断下当前这个节点名称是否为template
+    slotScope = getAndRemoveAttr(el, 'scope') //并且获取 scope 属性
     /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && slotScope) {
+    if (process.env.NODE_ENV !== 'production' && slotScope) {   //如果还在使用scope属性，抛出一个警告
       warn(
         `the "scope" attribute for scoped slots have been deprecated and ` +
         `replaced by "slot-scope" since 2.5. The new "slot-scope" attribute ` +
@@ -663,7 +670,7 @@ function processSlotContent (el) {
       )
     }
     el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope')
-  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
+  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {    //如果当前slot-scope也存在？同样抛出一个错误
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
       warn(
@@ -677,32 +684,32 @@ function processSlotContent (el) {
     el.slotScope = slotScope
   }
 
-  // slot="xxx"
-  const slotTarget = getBindingAttr(el, 'slot')
-  if (slotTarget) {
-    el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
-    el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot'])
+  // slot="xxx" 
+  const slotTarget = getBindingAttr(el, 'slot')   //获取动态的绑定值slot
+  if (slotTarget) {   //如果当前slot是存在的情况下
+    el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget    //并重新声明了一个属性 赋值为default默认值 及slotTarget本身值
+    el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot'])   //获取这个slot是否为一个动态绑定的slot 
     // preserve slot as an attribute for native shadow DOM compat
     // only for non-scoped slots.
-    if (el.tag !== 'template' && !el.slotScope) {
+    if (el.tag !== 'template' && !el.slotScope) {   //如果当前标签名不为template 并且 也没有使用scope、slot-scope属性
       addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'))
     }
   }
 
   // 2.6 v-slot syntax
   if (process.env.NEW_SLOT_SYNTAX) {
-    if (el.tag === 'template') {
+    if (el.tag === 'template') {    //如果当前这个是在template模板描述对象上
       // v-slot on <template>
-      const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
-      if (slotBinding) {
-        if (process.env.NODE_ENV !== 'production') {
-          if (el.slotTarget || el.slotScope) {
+      const slotBinding = getAndRemoveAttrByRegex(el, slotRE)   //获取到当前动态绑定的属性集合
+      if (slotBinding) {    //如果是有找到的情况下
+        if (process.env.NODE_ENV !== 'production') {    //并且是在开发环境下
+          if (el.slotTarget || el.slotScope) {  //如果slotTarget或者slotScope 都存在则提示当前插槽语法不是一个期望的，因为2.6.0以后将会全部清除掉
             warn(
               `Unexpected mixed usage of different slot syntaxes.`,
               el
             )
           }
-          if (el.parent && !maybeComponent(el.parent)) {
+          if (el.parent && !maybeComponent(el.parent)) {    //如果当前parent存在的情况下并且当前这个标签是一个保留标签
             warn(
               `<template v-slot> can only appear at the root level inside ` +
               `the receiving the component`,
@@ -710,9 +717,9 @@ function processSlotContent (el) {
             )
           }
         }
-        const { name, dynamic } = getSlotName(slotBinding)
-        el.slotTarget = name
-        el.slotTargetDynamic = dynamic
+        const { name, dynamic } = getSlotName(slotBinding)      //解析结构对象
+        el.slotTarget = name  //声明一个属性并赋值为新的name值
+        el.slotTargetDynamic = dynamic  //赋值slotTargetDynamic为dynamic对应的值
         el.slotScope = slotBinding.value || emptySlotScopeToken // force it into a scoped slot for perf
       }
     } else {
@@ -763,18 +770,18 @@ function processSlotContent (el) {
 }
 
 function getSlotName (binding) {
-  let name = binding.name.replace(slotRE, '')
-  if (!name) {
-    if (binding.name[0] !== '#') {
-      name = 'default'
-    } else if (process.env.NODE_ENV !== 'production') {
+  let name = binding.name.replace(slotRE, '')   //移除一下不管是任何形式的动态绑定都替换为空
+  if (!name) {  //如果当前这是一个简写的slot
+    if (binding.name[0] !== '#') { //如果当前不是已#简写开头的
+      name = 'default'    //那我们需要重新给他命名一个默认值
+    } else if (process.env.NODE_ENV !== 'production') {   //在开发环境下 给出警告
       warn(
         `v-slot shorthand syntax requires a slot name.`,
         binding
       )
     }
   }
-  return dynamicArgRE.test(name)
+  return dynamicArgRE.test(name)    //匹配当前执行的reg并返回一个对象
     // dynamic [name]
     ? { name: name.slice(1, -1), dynamic: true }
     // static name
@@ -783,9 +790,9 @@ function getSlotName (binding) {
 
 // handle <slot/> outlets
 function processSlotOutlet (el) {
-  if (el.tag === 'slot') {
-    el.slotName = getBindingAttr(el, 'name')
-    if (process.env.NODE_ENV !== 'production' && el.key) {
+  if (el.tag === 'slot') {    //如果当前这个描述对象的节点名称为slot
+    el.slotName = getBindingAttr(el, 'name')  //则在当前描述对象上添加一个slotName的属性 并赋值动态绑定的name值
+    if (process.env.NODE_ENV !== 'production' && el.key) {    //如果在开发环境下slot上写了key 则给出警告
       warn(
         `\`key\` does not work on <slot> because slots are abstract outlets ` +
         `and can possibly expand into multiple elements. ` +
@@ -798,11 +805,11 @@ function processSlotOutlet (el) {
 
 function processComponent (el) {
   let binding
-  if ((binding = getBindingAttr(el, 'is'))) {
-    el.component = binding
+  if ((binding = getBindingAttr(el, 'is'))) {   //如果当前is有写 不管是的动态属性还是静态属性
+    el.component = binding  //赋值当前component为 binding值
   }
-  if (getAndRemoveAttr(el, 'inline-template') != null) {
-    el.inlineTemplate = true
+  if (getAndRemoveAttr(el, 'inline-template') != null) {    //如果inline-template 存在
+    el.inlineTemplate = true    //则赋值inlineTemplate 为true 完成了
   }
 }
 
@@ -942,7 +949,10 @@ function processAttrs (el) {
     }
   }
 }
-
+/**
+ * 查找父指定父元素是有包含for节点的
+ * @param {*} el 
+ */
 function checkInFor (el: ASTElement): boolean {
   let parent = el
   while (parent) {

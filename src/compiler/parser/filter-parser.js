@@ -3,10 +3,10 @@
 const validDivisionCharRE = /[\w).+\-_$\]]/
 
 export function parseFilters (exp: string): string {
-  let inSingle = false
-  let inDouble = false
-  let inTemplateString = false
-  let inRegex = false
+  let inSingle = false    //用来标识当前读取的字符是否在由 单引号 包裹的字符串中
+  let inDouble = false    //用来标识当前读取的字符是否在由 双引号 包裹的字符串中。
+  let inTemplateString = false    //用来标识当前读取的字符是否在 模板字符串 中
+  let inRegex = false   //用来标识当前读取的字符是否在 正则表达式 中
   let curly = 0
   let square = 0
   let paren = 0

@@ -169,14 +169,14 @@ export function getBindingAttr (
   getStatic?: boolean
 ): ?string {
   const dynamicValue =
-    getAndRemoveAttr(el, ':' + name) ||
+    getAndRemoveAttr(el, ':' + name) ||   //获取一个开发者动态绑定的属性值
     getAndRemoveAttr(el, 'v-bind:' + name)
-  if (dynamicValue != null) {
-    return parseFilters(dynamicValue)
-  } else if (getStatic !== false) {
-    const staticValue = getAndRemoveAttr(el, name)
+  if (dynamicValue != null) {   //如果当前这个值存在
+    return parseFilters(dynamicValue) //格式化动态绑定的属性值 包括逻辑计算符号
+  } else if (getStatic !== false) {   //如果当前getStatic 存在并且不等于false
+    const staticValue = getAndRemoveAttr(el, name)    //获取指定静态属性值
     if (staticValue != null) {
-      return JSON.stringify(staticValue)
+      return JSON.stringify(staticValue)    //返回格式化后的纯字符串
     }
   }
 }
