@@ -814,49 +814,49 @@ function processComponent (el) {
 }
 
 function processAttrs (el) {
-  const list = el.attrsList
-  let i, l, name, rawName, value, modifiers, syncGen, isDynamic
-  for (i = 0, l = list.length; i < l; i++) {
-    name = rawName = list[i].name
-    value = list[i].value
-    if (dirRE.test(name)) {
+  const list = el.attrsList   //获取当前剩余的所有剩余的属性
+  let i, l, name, rawName, value, modifiers, syncGen, isDynamic   //声明了一推变量
+  for (i = 0, l = list.length; i < l; i++) {      //循环处理当前还有并且存在的属性信息
+    name = rawName = list[i].name     //获取到当前属性的名称
+    value = list[i].value   //获取到当前属性的值
+    if (dirRE.test(name)) {   //判断当前这个属性值是否为动态数据绑定的，如果是则继续走下去
       // mark element as dynamic
-      el.hasBindings = true
+      el.hasBindings = true   //并在当前的描述对象上添加一个属性为true
       // modifiers
-      modifiers = parseModifiers(name.replace(dirRE, ''))
-      // support .foo shorthand syntax for the .prop modifier
-      if (process.env.VBIND_PROP_SHORTHAND && propBindRE.test(name)) {
-        (modifiers || (modifiers = {})).prop = true
-        name = `.` + name.slice(1).replace(modifierRE, '')
-      } else if (modifiers) {
-        name = name.replace(modifierRE, '')
+      modifiers = parseModifiers(name.replace(dirRE, ''))   //先使用正则除去动态绑定属性的写法，再把完整的修饰符字符串传入parseModifiers函数进行解析
+      // support .foo shorthand syntax for the .prop modifier   支持.foo .prop修饰符的简写语法
+      if (process.env.VBIND_PROP_SHORTHAND && propBindRE.test(name)) {      //如果当前这个属性写法为‘.’开头的
+        (modifiers || (modifiers = {})).prop = true   //如果当前用户没有写修饰符  那个就直接只用空对象默认赋值并添加一个.prop等于true的属性
+        name = `.` + name.slice(1).replace(modifierRE, '')  //把当前字符串重新去除所有修饰符，并重新组装
+      } else if (modifiers) {   //如果属性名称不是已‘.’开头的，并且有写修饰符的情况下
+        name = name.replace(modifierRE, '')  //去除修饰符部分并重新组装属性名称
       }
-      if (bindRE.test(name)) { // v-bind
-        name = name.replace(bindRE, '')
-        value = parseFilters(value)
-        isDynamic = dynamicArgRE.test(name)
-        if (isDynamic) {
+      if (bindRE.test(name)) { // v-bind    //如果这个是已一个动态绑定的属性
+        name = name.replace(bindRE, '')     //去除已动态绑定语法的开头形式，重新组装属性名
+        value = parseFilters(value) // 继续把当前value作为表达式验证
+        isDynamic = dynamicArgRE.test(name)   //并使用正则来匹配当前的属性值是否为[xxx]开头的写法
+        if (isDynamic) {  //如果当前是则去除双大括号
           name = name.slice(1, -1)
         }
         if (
           process.env.NODE_ENV !== 'production' &&
-          value.trim().length === 0
+          value.trim().length === 0     //如果绑定的值为空的话  则抛出一个错误
         ) {
           warn(
-            `The value for a v-bind expression cannot be empty. Found in "v-bind:${name}"`
-          )
+            `The value for a v-bind expression cannot be empty. Found in "v-bind:${name}"`      //哦 你绑定的值是空的，没找到 请你明细一下
+          ) 
         }
-        if (modifiers) {
-          if (modifiers.prop && !isDynamic) {
-            name = camelize(name)
-            if (name === 'innerHtml') name = 'innerHTML'
+        if (modifiers) {    //继续 如果当前修饰符有写
+          if (modifiers.prop && !isDynamic) { //如果当前动态绑定使用了prop 并且不是已[xxx] 写法开头的
+            name = camelize(name) //把属性名驼峰命名一下
+            if (name === 'innerHtml') name = 'innerHTML'    //当遇到innerHtml需要特殊处理一下
           }
-          if (modifiers.camel && !isDynamic) {
-            name = camelize(name)
+          if (modifiers.camel && !isDynamic) {    //如果不是[xxx]这样的写法 并且使用了camel修饰符
+            name = camelize(name)   //把属性名驼峰命名一下
           }
-          if (modifiers.sync) {
+          if (modifiers.sync) {   //如果当前使用了sync修饰符
             syncGen = genAssignmentCode(value, `$event`)
-            if (!isDynamic) {
+            if (!isDynamic) {   //并且不是一个动态[xxxx]的写法
               addHandler(
                 el,
                 `update:${camelize(name)}`,
@@ -895,36 +895,36 @@ function processAttrs (el) {
         if ((modifiers && modifiers.prop) || (
           !el.component && platformMustUseProp(el.tag, el.attrsMap.type, name)
         )) {
-          addProp(el, name, value, list[i], isDynamic)
-        } else {
-          addAttr(el, name, value, list[i], isDynamic)
+          addProp(el, name, value, list[i], isDynamic)    //设置当前的prop属性
+        } else {  
+          addAttr(el, name, value, list[i], isDynamic)    //设置当前的attr属性
         }
-      } else if (onRE.test(name)) { // v-on
-        name = name.replace(onRE, '')
-        isDynamic = dynamicArgRE.test(name)
-        if (isDynamic) {
-          name = name.slice(1, -1)
+      } else if (onRE.test(name)) { // v-on   //事件绑定
+        name = name.replace(onRE, '') //同样去除事件绑定语法部分
+        isDynamic = dynamicArgRE.test(name) //同样验证下是否为[xxx]的写法
+        if (isDynamic) {  //如果当前这个是2.6.0动态事件
+          name = name.slice(1, -1)  //及继续去除[]开头和结尾 拿到最终的属性名
         }
-        addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic)
-      } else { // normal directives
-        name = name.replace(dirRE, '')
+        addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic)   //添加完相应是事件修饰符及事件信息
+      } else { // normal directives     //其他指令绑定
+        name = name.replace(dirRE, '')    //同样去除vue的其他指令的语法部分
         // parse arg
-        const argMatch = name.match(argRE)
-        let arg = argMatch && argMatch[1]
-        isDynamic = false
-        if (arg) {
-          name = name.slice(0, -(arg.length + 1))
-          if (dynamicArgRE.test(arg)) {
-            arg = arg.slice(1, -1)
-            isDynamic = true
+        const argMatch = name.match(argRE)  //获取到当前是否有传递额外参数
+        let arg = argMatch && argMatch[1] //如果argMatch有匹配到 则获取匹配到的第二个参数赋值到arg上
+        isDynamic = false //并标记当前动态标签为false
+        if (arg) {  //如果是有传递额外参数的情况下
+          name = name.slice(0, -(arg.length + 1))     //及重新获取下name的值
+          if (dynamicArgRE.test(arg)) {  //判断下当前这个表达式是否为动态编译的事件类型
+            arg = arg.slice(1, -1)    //如果是则获取到最终的属性名
+            isDynamic = true  //并设置当前为动态编译节点
           }
         }
-        addDirective(el, name, rawName, value, arg, isDynamic, modifiers, list[i])
-        if (process.env.NODE_ENV !== 'production' && name === 'model') {
-          checkForAliasModel(el, value)
+        addDirective(el, name, rawName, value, arg, isDynamic, modifiers, list[i])    //添加上当前自定义事件及其他事件到当前藐视对象上
+        if (process.env.NODE_ENV !== 'production' && name === 'model') {    //如果当前是使用了v-model 的形式 
+          checkForAliasModel(el, value) //判断当前model是否在使用for的循环item
         }
       }
-    } else {
+    } else {    //解析一些非指令标签的属性
       // literal attribute
       if (process.env.NODE_ENV !== 'production') {
         const res = parseText(value, delimiters)
@@ -938,12 +938,15 @@ function processAttrs (el) {
           )
         }
       }
-      addAttr(el, name, JSON.stringify(value), list[i])
+      addAttr(el, name, JSON.stringify(value), list[i])   //添加一个属性到当前描述对象的attrs数组中
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation
+      /**
+       * 他说这是一个狐火的bug  muted 属性在火狐上无法通过setAttribute设置进去
+       */
       if (!el.component &&
           name === 'muted' &&
-          platformMustUseProp(el.tag, el.attrsMap.type, name)) {
+          platformMustUseProp(el.tag, el.attrsMap.type, name)) {    //则声明一个props来存储信息
         addProp(el, name, 'true', list[i])
       }
     }
@@ -963,13 +966,16 @@ function checkInFor (el: ASTElement): boolean {
   }
   return false
 }
-
+/**
+ * 从一个属性中获取已知写法的修饰符 以对象的形式返回或者是undefined
+ * @param {*} name 
+ */
 function parseModifiers (name: string): Object | void {
-  const match = name.match(modifierRE)
-  if (match) {
-    const ret = {}
-    match.forEach(m => { ret[m.slice(1)] = true })
-    return ret
+  const match = name.match(modifierRE)  //获取到当前存在的修饰符
+  if (match) {    //如果开发这是有写修饰符的情况下
+    const ret = {}  //声明了一个结果集框
+    match.forEach(m => { ret[m.slice(1)] = true })    //截取修饰符的第一个字符‘.’最后赋值到res中
+    return ret    //最终返回结果集
   }
 }
 
@@ -1025,10 +1031,15 @@ function guardIESVGBug (attrs) {
   return res
 }
 
+/**
+ * 给出开发者提示 在使用v-for的时候不能把当前对象绑定在响应式数据上
+ * @param {*} el 
+ * @param {*} value 
+ */
 function checkForAliasModel (el, value) {
   let _el = el
   while (_el) {
-    if (_el.for && _el.alias === value) {
+    if (_el.for && _el.alias === value) {  
       warn(
         `<${el.tag} v-model="${value}">: ` +
         `You are binding v-model directly to a v-for iteration alias. ` +
